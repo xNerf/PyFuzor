@@ -1,2 +1,9 @@
 # PyFuzor
-An obfuscator for python focusing on base64 and base85 obfuscation
+## Advanced Obfusactor Focusing on Base64 Base85 and ROT
+
+
+# Showcase
+## Before obfuscation
+![Beforeobf](nazwa.png)
+## After obfusaction
+![Afterobf](image.png)
