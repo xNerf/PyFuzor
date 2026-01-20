@@ -1,3 +1,4 @@
 {
-  "anti-virtual-machine": true
+  "anti-virtual-machine": true,
+  "confusing-callbacks": true
 }
