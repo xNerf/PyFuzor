@@ -1,0 +1,10 @@
+{
+    "ffi_obfuscation": {
+        "enabled": true
+    },
+    "anti_vm": {
+        "enabled": true
+    },
+    "remove_comments": true,
+    "rename_variables": true
+}
