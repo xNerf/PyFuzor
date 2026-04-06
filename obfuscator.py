@@ -8,8 +8,6 @@ import builtins
 import time
 from alive_progress import alive_bar
 
-# --- Obfuscation Core (Professional V2) ---
-
 def get_random_name(length=8):
     return "PyFuzor_" + ''.join(secrets.choice(string.hexdigits) for _ in range(length))
 
@@ -237,7 +235,6 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             args=[], keywords=[]
         )
 
-# --- Templates ---
 
 FFI_WRAPPER_SOURCE = r'''
 class _PyFuzorFlow:
@@ -380,8 +377,6 @@ def _pyfuzor_init_security():
 _pyfuzor_init_security()
 '''
 
-# --- CLI Aesthetics & Logic ---
-
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding='utf-8')
 
@@ -442,7 +437,6 @@ def process_obfuscation(filename):
         for _ in range(5): time.sleep(0.01); bar()
         with open(filename, "r", encoding="utf-8") as f: source = f.read() 
         
-        # Decide Strategy
         use_ast = False
         if config.get("rename_variables"): use_ast = True
         if config.get("ffi_obfuscation", {}).get("enabled"): use_ast = True
@@ -451,11 +445,6 @@ def process_obfuscation(filename):
         output_code = ""
 
         if use_ast:
-             # Full Obfuscation (Lossy for comments)
-             if not config.get("remove_comments"):
-                 # Warn user
-                 pass # Cannot easily warn inside progress bar without messing up output
-
              for _ in range(10): time.sleep(0.01); bar()
              tree = ast.parse(source)
              
@@ -472,7 +461,6 @@ def process_obfuscation(filename):
                 wrapper_tree = ast.parse(FFI_WRAPPER_SOURCE)
                 tree.body = wrapper_tree.body + tree.body
                 
-             # Add Anti-VM via AST if enabled (cleaner insertion)
              if config.get("anti_vm", {}).get("enabled", True):
                 antivm_tree = ast.parse(ANTI_VM_SOURCE)
                 tree.body = antivm_tree.body + tree.body
@@ -481,14 +469,10 @@ def process_obfuscation(filename):
              output_code = ast.unparse(tree)
              
         else:
-             # Direct Mode (Preserves Comments)
              for _ in range(60): time.sleep(0.01); bar()
              output_code = source
              if config.get("anti_vm", {}).get("enabled", True):
                  output_code = ANTI_VM_SOURCE + "\n" + output_code
-             
-             # If user wanted remove_comments=False, we are good.
-             # If user wanted remove_comments=True, we would have entered Loop A (use_ast=True).
 
         base, _ = os.path.splitext(filename)
         out_name = f"{base}_pro.py"
