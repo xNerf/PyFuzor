@@ -13,6 +13,9 @@
     "attribute_obfuscation": {
         "enabled": true
     },
+    "boolean_obfuscation": {
+        "enabled": true
+    },
     "junk_code": {
         "enabled": true
     }

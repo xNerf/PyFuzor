@@ -304,8 +304,29 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                     k = secrets.randbelow(254) + 1
                     return ast.BinOp(left=ast.Constant(value=node.value ^ k), op=ast.BitXor(), right=ast.Constant(value=k))
         elif isinstance(node.value, bool):
-            if node.value: return ast.UnaryOp(op=ast.Not(), operand=ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3]))))
-            else: return ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3])))
+            if not self.config.get("boolean_obfuscation", {}).get("enabled", True):
+                return node
+
+            val = node.value
+            choice = secrets.randbelow(4)
+            if val:
+                if choice == 0:
+                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(100)), op=ast.BitAnd(), right=ast.Constant(value=0)), ops=[ast.Eq()], comparators=[ast.Constant(value=0)])
+                elif choice == 1:
+                    return ast.UnaryOp(op=ast.Not(), operand=ast.Compare(left=ast.Constant(value=1), ops=[ast.Eq()], comparators=[ast.Constant(value=2)]))
+                elif choice == 2:
+                    return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Lt()], comparators=[ast.Constant(value=200)])
+                else:
+                    return ast.UnaryOp(op=ast.Not(), operand=ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3]))))
+            else:
+                if choice == 0:
+                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(100)), op=ast.BitAnd(), right=ast.Constant(value=0)), ops=[ast.NotEq()], comparators=[ast.Constant(value=0)])
+                elif choice == 1:
+                    return ast.Compare(left=ast.Constant(value=1), ops=[ast.Eq()], comparators=[ast.Constant(value=2)])
+                elif choice == 2:
+                    return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Gt()], comparators=[ast.Constant(value=200)])
+                else:
+                    return ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3])))
         return node
 
     def visit_Attribute(self, node):
@@ -536,6 +557,7 @@ def load_config():
         "remove_comments": True,
         "string_encryption": {"enabled": True},
         "attribute_obfuscation": {"enabled": True},
+        "boolean_obfuscation": {"enabled": True},
         "junk_code": {"enabled": True}
     }
     if os.path.exists("config.json"):
@@ -549,13 +571,13 @@ def load_config():
 def process_obfuscation(filename):
     if not filename.endswith(".py"):
         filename += ".py"
-    
+
     if not os.path.exists(filename):
         print(f"{ANSI_RED}Error: File '{filename}' not found.{ANSI_RESET}")
         return
 
     config = load_config()
-    
+
     exclusions = []
     if os.path.exists("exclusions.txt"):
         try:
@@ -564,39 +586,39 @@ def process_obfuscation(filename):
 
     with alive_bar(100, title=f'Protecting {filename}', bar='smooth', spinner='dots_waves') as bar:
         for _ in range(5): time.sleep(0.01); bar()
-        with open(filename, "r", encoding="utf-8") as f: source = f.read() 
-        
+        with open(filename, "r", encoding="utf-8") as f: source = f.read()
+
         use_ast = False
         if config.get("rename_variables"): use_ast = True
         if config.get("ffi_obfuscation", {}).get("enabled"): use_ast = True
         if config.get("remove_comments"): use_ast = True
-        
+
         output_code = ""
 
         if use_ast:
              for _ in range(10): time.sleep(0.01); bar()
              tree = ast.parse(source)
-             
+
              for _ in range(20): time.sleep(0.01); bar()
              builder = SymbolTableBuilder(config, exclusions)
              builder.visit(tree)
-             
+
              for _ in range(30): time.sleep(0.01); bar()
              obfuscator = ProfessionalObfuscator(config, builder)
              tree = obfuscator.visit(tree)
              ast.fix_missing_locations(tree)
-             
+
              if obfuscator.wrappers_needed:
                 wrapper_tree = ast.parse(FFI_WRAPPER_SOURCE)
                 tree.body = wrapper_tree.body + tree.body
-                
+
              if config.get("anti_vm", {}).get("enabled", True):
                 antivm_tree = ast.parse(ANTI_VM_SOURCE)
                 tree.body = antivm_tree.body + tree.body
-                
+
              for _ in range(20): time.sleep(0.01); bar()
              output_code = ast.unparse(tree)
-             
+
         else:
              for _ in range(60): time.sleep(0.01); bar()
              output_code = source
@@ -606,7 +628,7 @@ def process_obfuscation(filename):
         base, _ = os.path.splitext(filename)
         out_name = f"{base}_pro.py"
         with open(out_name, "w", encoding="utf-8") as f: f.write(output_code)
-    
+
     print(f"\n{ANSI_GREEN}PYFUZOR SUCCESS!{ANSI_RESET} Protected code saved to: {ANSI_YELLOW}{out_name}{ANSI_RESET}")
     if not use_ast and config.get("anti_vm", {}).get("enabled"):
         print(f"{ANSI_CYAN}Info: Lightweight mode used. Comments preserved.{ANSI_RESET}\n")
@@ -620,15 +642,15 @@ def main_cli():
     print(LOGO)
     print(f"{ANSI_YELLOW}Commands: obf <name>, help, exit, clear{ANSI_RESET}")
     print(f"{ANSI_CYAN}Note: Extensions are optional (.py will be added automatically){ANSI_RESET}\n")
-    
+
     while True:
         try:
             cmd_input = input(f"{ANSI_MAGENTA}{ANSI_BOLD}PyFuzor >>> {ANSI_RESET}").strip()
             if not cmd_input: continue
-            
+
             parts = cmd_input.split()
             cmd = parts[0].lower()
-            
+
             if cmd == "exit" or cmd == "quit":
                 print(f"{ANSI_MAGENTA}Closing PyFuzor. Stay safe!{ANSI_RESET}")
                 break
