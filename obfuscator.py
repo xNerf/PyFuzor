@@ -58,6 +58,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self.current_scope = self.root_scope
         self.scope_map = {}
         self.rename_enabled = config.get("rename_variables", True)
+        self.global_renames = {}
 
     def visit_Module(self, node):
         self.scope_map[node] = self.current_scope
@@ -65,24 +66,29 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
     def visit_ClassDef(self, node):
         if self.rename_enabled:
-             self._define_name(node.name)
+             self._define_name(node.name, is_attr=True)
 
         class_scope = Scope('class', parent=self.current_scope)
         self.scope_map[node] = class_scope
         old_scope = self.current_scope
         self.current_scope = class_scope
-
         self.generic_visit(node)
         self.current_scope = old_scope
 
     def visit_FunctionDef(self, node):
         if self.rename_enabled:
-            self._define_name(node.name)
+            self._define_name(node.name, is_attr=True)
 
         func_scope = Scope('function', parent=self.current_scope)
         self.scope_map[node] = func_scope
         old_scope = self.current_scope
         self.current_scope = func_scope
+
+        if self.rename_enabled:
+            for arg in (node.args.args + node.args.kwonlyargs):
+                self._define_name(arg.arg, is_attr=True)
+            if node.args.vararg: self._define_name(node.args.vararg.arg, is_attr=True)
+            if node.args.kwarg: self._define_name(node.args.kwarg.arg, is_attr=True)
 
         self.generic_visit(node)
         self.current_scope = old_scope
@@ -109,18 +115,24 @@ class SymbolTableBuilder(ast.NodeVisitor):
         if self.rename_enabled and isinstance(node.ctx, ast.Store):
             self._define_name(node.id)
 
-    def _define_name(self, name):
+    def _define_name(self, name, is_attr=False):
         if name in self.exclusions or (name.startswith('__') and name.endswith('__')) or name in cl_builtins:
             return
 
-        if self.current_scope.scope_type == 'class':
+        if is_attr:
+            if name not in self.global_renames:
+                self.global_renames[name] = get_random_name()
+            self.current_scope.definitions[name] = self.global_renames[name]
             return
 
         scope = self.current_scope
         if name in scope.globals: scope = self.root_scope
         elif name in scope.nonlocals: return
         if name not in scope.definitions:
-            scope.definitions[name] = get_random_name()
+            if name in self.global_renames:
+                scope.definitions[name] = self.global_renames[name]
+            else:
+                scope.definitions[name] = get_random_name()
 
 class ProfessionalObfuscator(ast.NodeTransformer):
     def __init__(self, config, symbol_builder):
@@ -128,6 +140,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         self.rename_enabled = config.get("rename_variables", True)
         self.current_scope = symbol_builder.root_scope
         self.scope_map = symbol_builder.scope_map
+        self.global_renames = symbol_builder.global_renames
         self.ffi_enabled = config.get("ffi_obfuscation", {}).get("enabled", True)
         self.wrappers_needed = False
         self.flow_lib_name = "PyFuzor_Flow"
@@ -185,6 +198,15 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         return node
 
     def visit_arg(self, node):
+        if self.rename_enabled:
+            new_name = self.current_scope.resolve(node.arg)
+            if new_name: node.arg = new_name
+        return self.generic_visit(node)
+
+    def visit_keyword(self, node):
+        if self.rename_enabled and node.arg:
+            if node.arg in self.global_renames:
+                node.arg = self.global_renames[node.arg]
         return self.generic_visit(node)
 
     def visit_Name(self, node):
@@ -256,8 +278,12 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             return node
 
         if isinstance(node.value, (str, bytes)):
+            val = node.value
+            if isinstance(val, str) and self.rename_enabled and val in self.global_renames:
+                val = self.global_renames[val]
+
             k = secrets.randbelow(254) + 1
-            raw = node.value if isinstance(node.value, bytes) else node.value.encode()
+            raw = val if isinstance(val, bytes) else val.encode()
             encoded = base64.b64encode(bytes([((b ^ k) + 13) % 256 for b in raw])).decode()
             self.wrappers_needed = True
 
@@ -285,12 +311,18 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if not self.config.get("attribute_obfuscation", {}).get("enabled", True):
             return self.generic_visit(node)
 
+        attr_name = node.attr
+        if self.rename_enabled and attr_name in self.global_renames:
+            attr_name = self.global_renames[attr_name]
+
         if isinstance(node.ctx, ast.Load):
             return ast.Call(
                 func=ast.Name(id='getattr', ctx=ast.Load()),
-                args=[self.visit(node.value), self.visit(ast.Constant(value=node.attr))],
+                args=[self.visit(node.value), self.visit(ast.Constant(value=attr_name))],
                 keywords=[]
             )
+
+        node.attr = attr_name
         return self.generic_visit(node)
 
     def visit_JoinedStr(self, node):
