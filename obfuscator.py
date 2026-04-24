@@ -113,7 +113,8 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
     def visit_Name(self, node):
         if self.rename_enabled and isinstance(node.ctx, ast.Store):
-            self._define_name(node.id)
+            is_attr = (self.current_scope.scope_type == 'class')
+            self._define_name(node.id, is_attr=is_attr)
 
     def _define_name(self, name, is_attr=False):
         if name in self.exclusions or (name.startswith('__') and name.endswith('__')) or name in cl_builtins:
