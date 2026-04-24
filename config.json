@@ -16,6 +16,9 @@
     "boolean_obfuscation": {
         "enabled": true
     },
+    "control_flow_flattening": {
+        "enabled": true
+    },
     "junk_code": {
         "enabled": true
     }

@@ -142,6 +142,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         self.current_scope = symbol_builder.root_scope
         self.scope_map = symbol_builder.scope_map
         self.global_renames = symbol_builder.global_renames
+        self.exclusions = symbol_builder.exclusions
         self.ffi_enabled = config.get("ffi_obfuscation", {}).get("enabled", True)
         self.wrappers_needed = False
         self.flow_lib_name = "PyFuzor_Flow"
@@ -192,11 +193,63 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if self.rename_enabled:
             new_name = self.current_scope.resolve(node.name)
             if new_name: node.name = new_name
+
+        if self.config.get("control_flow_flattening", {}).get("enabled", True) and len(node.body) >= 3:
+            node.body = self._flatten_control_flow(node.body)
+
         self._enter_scope(node)
         self.generic_visit(node)
         node.body = self._insert_junk(node.body)
         self._exit_scope()
         return node
+
+    def _flatten_control_flow(self, body):
+        state_var = get_random_name(length=4)
+
+        declarations = []
+        logic = []
+        for stmt in body:
+            if isinstance(stmt, (ast.Global, ast.Nonlocal, ast.Import, ast.ImportFrom)):
+                declarations.append(stmt)
+            else:
+                logic.append(stmt)
+
+        if len(logic) < 2: return body
+
+        blocks = []
+        for i, stmt in enumerate(logic):
+            curr_id = i + 1
+            next_id = i + 2 if i < len(logic) - 1 else 0
+
+            if isinstance(stmt, ast.Return):
+                next_id = 0
+
+            block_body = [stmt]
+            if next_id != 0:
+                block_body.append(ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=next_id)))
+            else:
+                block_body.append(ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=0)))
+
+            blocks.append((curr_id, block_body))
+
+        secrets.SystemRandom().shuffle(blocks)
+
+        if_chain = None
+        for bid, bbody in blocks:
+            test = ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.Eq()], comparators=[ast.Constant(value=bid)])
+            if if_chain is None:
+                if_chain = ast.If(test=test, body=bbody, orelse=[])
+            else:
+                if_chain = ast.If(test=test, body=bbody, orelse=[if_chain])
+
+        init_state = ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=1))
+        while_loop = ast.While(
+            test=ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.NotEq()], comparators=[ast.Constant(value=0)]),
+            body=[if_chain] if if_chain else [ast.Pass()],
+            orelse=[]
+        )
+
+        return declarations + [init_state, while_loop]
 
     def visit_arg(self, node):
         if self.rename_enabled:
@@ -279,6 +332,9 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             return node
 
         if isinstance(node.value, (str, bytes)):
+            if node.value in self.exclusions:
+                return node
+
             val = node.value
             if isinstance(val, str) and self.rename_enabled and val in self.global_renames:
                 val = self.global_renames[val]
@@ -331,6 +387,9 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
     def visit_Attribute(self, node):
         if not self.config.get("attribute_obfuscation", {}).get("enabled", True):
+            return self.generic_visit(node)
+
+        if node.attr in self.exclusions:
             return self.generic_visit(node)
 
         attr_name = node.attr
@@ -558,6 +617,7 @@ def load_config():
         "string_encryption": {"enabled": True},
         "attribute_obfuscation": {"enabled": True},
         "boolean_obfuscation": {"enabled": True},
+        "control_flow_flattening": {"enabled": True},
         "junk_code": {"enabled": True}
     }
     if os.path.exists("config.json"):
