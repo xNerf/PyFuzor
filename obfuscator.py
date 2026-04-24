@@ -6,6 +6,7 @@ import secrets
 import string
 import builtins
 import time
+import base64
 from alive_progress import alive_bar
 
 def get_random_name(length=8):
@@ -57,7 +58,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self.current_scope = self.root_scope
         self.scope_map = {}
         self.rename_enabled = config.get("rename_variables", True)
-        
+
     def visit_Module(self, node):
         self.scope_map[node] = self.current_scope
         self.generic_visit(node)
@@ -65,39 +66,30 @@ class SymbolTableBuilder(ast.NodeVisitor):
     def visit_ClassDef(self, node):
         if self.rename_enabled:
              self._define_name(node.name)
-        
+
         class_scope = Scope('class', parent=self.current_scope)
         self.scope_map[node] = class_scope
         old_scope = self.current_scope
         self.current_scope = class_scope
+
         self.generic_visit(node)
         self.current_scope = old_scope
 
     def visit_FunctionDef(self, node):
         if self.rename_enabled:
             self._define_name(node.name)
-            
+
         func_scope = Scope('function', parent=self.current_scope)
         self.scope_map[node] = func_scope
         old_scope = self.current_scope
         self.current_scope = func_scope
-        
-        if self.rename_enabled:
-            if node.args.args:
-                for arg in node.args.args: self._define_name(arg.arg)
-            if node.args.kwonlyargs:
-                for arg in node.args.kwonlyargs: self._define_name(arg.arg)
-            if node.args.vararg:
-                self._define_name(node.args.vararg.arg)
-            if node.args.kwarg:
-                self._define_name(node.args.kwarg.arg)
-                
+
         self.generic_visit(node)
         self.current_scope = old_scope
 
     def visit_Global(self, node):
         for name in node.names: self.current_scope.globals.add(name)
-            
+
     def visit_Nonlocal(self, node):
         for name in node.names: self.current_scope.nonlocals.add(name)
 
@@ -120,6 +112,10 @@ class SymbolTableBuilder(ast.NodeVisitor):
     def _define_name(self, name):
         if name in self.exclusions or (name.startswith('__') and name.endswith('__')) or name in cl_builtins:
             return
+
+        if self.current_scope.scope_type == 'class':
+            return
+
         scope = self.current_scope
         if name in scope.globals: scope = self.root_scope
         elif name in scope.nonlocals: return
@@ -141,18 +137,40 @@ class ProfessionalObfuscator(ast.NodeTransformer):
     def _exit_scope(self):
         if self.current_scope.parent: self.current_scope = self.current_scope.parent
 
+    def _get_junk_statement(self):
+        name = get_random_name(length=4)
+        choice = secrets.randbelow(3)
+        if choice == 0:
+            return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=ast.Constant(value=secrets.randbelow(100)))
+        elif choice == 1:
+            return ast.Expr(value=ast.Call(func=ast.Name(id='len', ctx=ast.Load()), args=[ast.Constant(value=name)], keywords=[]))
+        else:
+            return ast.If(test=ast.Constant(value=False), body=[ast.Pass()], orelse=[])
+
+    def _insert_junk(self, body):
+        if not self.config.get("junk_code", {}).get("enabled", True):
+            return body
+        new_body = []
+        for stmt in body:
+            if secrets.randbelow(100) < 15:
+                new_body.append(self._get_junk_statement())
+            new_body.append(stmt)
+        return new_body
+
     def visit_Module(self, node):
         self._enter_scope(node)
         self.generic_visit(node)
+        node.body = self._insert_junk(node.body)
         self._exit_scope()
         return node
-        
+
     def visit_ClassDef(self, node):
         if self.rename_enabled:
             new_name = self.current_scope.resolve(node.name)
             if new_name: node.name = new_name
         self._enter_scope(node)
         self.generic_visit(node)
+        node.body = self._insert_junk(node.body)
         self._exit_scope()
         return node
 
@@ -162,13 +180,11 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             if new_name: node.name = new_name
         self._enter_scope(node)
         self.generic_visit(node)
+        node.body = self._insert_junk(node.body)
         self._exit_scope()
         return node
 
     def visit_arg(self, node):
-        if self.rename_enabled:
-            new_name = self.current_scope.resolve(node.arg)
-            if new_name: node.arg = new_name
         return self.generic_visit(node)
 
     def visit_Name(self, node):
@@ -235,11 +251,88 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             args=[], keywords=[]
         )
 
+    def visit_Constant(self, node):
+        if not self.config.get("string_encryption", {}).get("enabled", True):
+            return node
+
+        if isinstance(node.value, (str, bytes)):
+            k = secrets.randbelow(254) + 1
+            raw = node.value if isinstance(node.value, bytes) else node.value.encode()
+            encoded = base64.b64encode(bytes([((b ^ k) + 13) % 256 for b in raw])).decode()
+            self.wrappers_needed = True
+
+            method = 'decrypt' if isinstance(node.value, str) else 'decrypt_b'
+            return ast.Call(
+                func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr=method, ctx=ast.Load()),
+                args=[ast.Constant(value=encoded), ast.Constant(value=k)],
+                keywords=[]
+            )
+        elif isinstance(node.value, int) and not isinstance(node.value, bool):
+            if -1000 < node.value < 1000:
+                op_type = secrets.choice(['add', 'xor'])
+                if op_type == 'add':
+                    offset = secrets.randbelow(100) + 1
+                    return ast.BinOp(left=ast.Constant(value=node.value - offset), op=ast.Add(), right=ast.Constant(value=offset))
+                else:
+                    k = secrets.randbelow(254) + 1
+                    return ast.BinOp(left=ast.Constant(value=node.value ^ k), op=ast.BitXor(), right=ast.Constant(value=k))
+        elif isinstance(node.value, bool):
+            if node.value: return ast.UnaryOp(op=ast.Not(), operand=ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3]))))
+            else: return ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3])))
+        return node
+
+    def visit_Attribute(self, node):
+        if not self.config.get("attribute_obfuscation", {}).get("enabled", True):
+            return self.generic_visit(node)
+
+        if isinstance(node.ctx, ast.Load):
+            return ast.Call(
+                func=ast.Name(id='getattr', ctx=ast.Load()),
+                args=[self.visit(node.value), self.visit(ast.Constant(value=node.attr))],
+                keywords=[]
+            )
+        return self.generic_visit(node)
+
+    def visit_JoinedStr(self, node):
+        if not self.config.get("string_encryption", {}).get("enabled", True):
+            return self.generic_visit(node)
+
+        res = None
+        for val in node.values:
+            curr = None
+            if isinstance(val, ast.Constant):
+                curr = self.visit_Constant(val)
+            elif isinstance(val, ast.FormattedValue):
+                expr = self.visit(val.value)
+                if val.format_spec:
+                    curr = ast.Call(func=ast.Name(id='format', ctx=ast.Load()), args=[expr, self.visit(val.format_spec)], keywords=[])
+                else:
+                    fname = 'str'
+                    if val.conversion == 114: fname = 'repr'
+                    elif val.conversion == 97: fname = 'ascii'
+                    curr = ast.Call(func=ast.Name(id=fname, ctx=ast.Load()), args=[expr], keywords=[])
+
+            if res is None: res = curr
+            else: res = ast.BinOp(left=res, op=ast.Add(), right=curr)
+
+        return res if res else ast.Constant(value="")
 
 FFI_WRAPPER_SOURCE = r'''
 class _PyFuzorFlow:
-    def elseobf(self, cond): return int(not bool(cond))
-    def ifchk(self, cond): return bool(cond)
+    def elseobf(self, c): return int(not bool(c))
+    def ifchk(self, c): return bool(c)
+    def decrypt(self, d, k):
+        import base64
+        try:
+            b = base64.b64decode(d)
+            return bytes([((x - 13) % 256) ^ k for x in b]).decode('utf-8', 'ignore')
+        except: return ""
+    def decrypt_b(self, d, k):
+        import base64
+        try:
+            b = base64.b64decode(d)
+            return bytes([((x - 13) % 256) ^ k for x in b])
+        except: return b""
 PyFuzor_Flow = _PyFuzorFlow()
 '''
 
@@ -264,7 +357,7 @@ def _pyfuzor_init_security():
 
         typedef NTSTATUS (NTAPI *p_ni)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
 
-        class _PyFuzor_Sec { 
+        class _PyFuzor_Sec {
         public:
             static bool _run_all() {
                 if (_c_dbg()) return true;
@@ -289,7 +382,7 @@ def _pyfuzor_init_security():
                 return isP;
             }
             static bool _c_p_proc() {
-                HMODULE hN = GetModuleHandleA(_dec({0x24, 0x3e, 0x2e, 0x26, 0x26, 0x64, 0x2e, 0x26, 0x26}, 0x4a).c_str()); 
+                HMODULE hN = GetModuleHandleA(_dec({0x24, 0x3e, 0x2e, 0x26, 0x26, 0x64, 0x2e, 0x26, 0x26}, 0x4a).c_str());
                 if (hN) {
                     auto q = (p_ni)GetProcAddress(hN, _dec({0x24, 0x1e, 0x3b, 0x1f, 0x1f, 0x18, 0x13, 0x33, 0x14, 0x1c, 0x15, 0x18, 0x17, 0x1b, 0x13, 0x13, 0x13, 0x35, 0x18, 0x15, 0x19, 0x1f, 0x13, 0x19, 0x3a, 0x18, 0x15, 0x19, 0x1f, 0x19, 0x13}, 0x6a).c_str());
                     if (q) {
@@ -304,7 +397,7 @@ def _pyfuzor_init_security():
                                     std::string n(buf);
                                     std::transform(n.begin(), n.end(), n.begin(), ::tolower);
                                     CloseHandle(hP);
-                                    if (n.find(_dec({0x2f, 0x32, 0x3a, 0x26, 0x25, 0x38, 0x2f, 0x38, 0x64, 0x2f, 0x32, 0x2f}, 0x4a)) == std::string::npos && 
+                                    if (n.find(_dec({0x2f, 0x32, 0x3a, 0x26, 0x25, 0x38, 0x2f, 0x38, 0x64, 0x2f, 0x32, 0x2f}, 0x4a)) == std::string::npos &&
                                         n.find(_dec({0x29, 0x27, 0x2e, 0x64, 0x2f, 0x32, 0x2f}, 0x4a)) == std::string::npos) return true;
                                 }
                                 CloseHandle(hP);
@@ -336,7 +429,7 @@ def _pyfuzor_init_security():
                 char u[256]; DWORD s = sizeof(u);
                 if (GetUserNameA(u, &s)) {
                     std::string n(u); std::transform(n.begin(), n.end(), n.begin(), ::tolower);
-                    if (n.find(_dec({0x39, 0x2b, 0x24, 0x2e, 0x28, 0x25, 0x32}, 0x4a)) != std::string::npos) return true; 
+                    if (n.find(_dec({0x39, 0x2b, 0x24, 0x2e, 0x28, 0x25, 0x32}, 0x4a)) != std::string::npos) return true;
                 }
                 return false;
             }
@@ -361,15 +454,15 @@ def _pyfuzor_init_security():
             }
         };
         """)
-        
+
         native = cppyy.gbl._PyFuzor_Sec
         if native._run_all():
              sys.exit(0)
-            
+
         recent_path = os.path.join(os.getenv('APPDATA', ''), 'Microsoft', 'Windows', 'Recent')
         if os.path.exists(recent_path) and len(os.listdir(recent_path)) < 20:
              sys.exit(0)
-            
+
         native._s_crit()
     except:
         pass
@@ -390,7 +483,7 @@ ANSI_BOLD = "\u001b[1m"
 
 LOGO = f"""
 {ANSI_MAGENTA}{ANSI_BOLD}
- ██████╗ ██╗   ██╗███████╗██╗   ██╗███████╗ ██████╗ ██████╗ 
+ ██████╗ ██╗   ██╗███████╗██╗   ██╗███████╗ ██████╗ ██████╗
  ██╔══██╗╚██╗ ██╔╝██╔════╝██║   ██║╚══███╔╝██╔═══██╗██╔══██╗
  ██████╔╝ ╚████╔╝ █████╗  ██║   ██║  ███╔╝ ██║   ██║██████╔╝
  ██╔═══╝   ╚██╔╝  ██╔══╝  ██║   ██║ ███╔╝  ██║   ██║██╔══██╗
@@ -404,10 +497,13 @@ def clear_screen():
 
 def load_config():
     config = {
-        "ffi_obfuscation": {"enabled": True}, 
+        "ffi_obfuscation": {"enabled": True},
         "rename_variables": True,
         "anti_vm": {"enabled": True},
-        "remove_comments": True
+        "remove_comments": True,
+        "string_encryption": {"enabled": True},
+        "attribute_obfuscation": {"enabled": True},
+        "junk_code": {"enabled": True}
     }
     if os.path.exists("config.json"):
         try:
