@@ -1218,29 +1218,29 @@ if __name__ == "__main__": _e()
 
     print(f"\n{ANSI_GREEN} SUCCESS {ANSI_RESET} Protected code saved to: {ANSI_YELLOW}{out_name}{ANSI_RESET}")
     print(f"{ANSI_CYAN} ┌─────────────────────────────────────────────────────────────┐")
-    print(f"{ANSI_CYAN} │ {ANSI_BOLD}{'Core Metrics':<59}")
+    print(f"{ANSI_CYAN} │ {ANSI_BOLD}Core Metrics")
     print(f"{ANSI_CYAN} │  > Source Growth         : {ANSI_YELLOW}{ratio:>8.1f}%")
-    print(f"{ANSI_CYAN} │  > Symbols Renamed       : {ANSI_YELLOW}{str(stats['renamed_symbols']):<8}")
-    print(f"{ANSI_CYAN} │  > Junk Statements Added : {ANSI_YELLOW}{str(stats['junk_statements']):<8}")
+    print(f"{ANSI_CYAN} │  > Symbols Renamed       : {ANSI_YELLOW}{str(stats['renamed_symbols'])}")
+    print(f"{ANSI_CYAN} │  > Junk Statements Added : {ANSI_YELLOW}{str(stats['junk_statements'])}")
     print(f"{ANSI_CYAN} ├─────────────────────────────────────────────────────────────┤")
-    print(f"{ANSI_CYAN} │ {ANSI_BOLD}{'Transformations':<59}")
-    print(f"{ANSI_CYAN} │  > Strings Encrypted     : {ANSI_YELLOW}{str(stats['encrypted_strings']):<8}")
-    print(f"{ANSI_CYAN} │  > Ints Obfuscated       : {ANSI_YELLOW}{str(stats['obfuscated_ints']):<8}")
-    print(f"{ANSI_CYAN} │  > Bools Obfuscated      : {ANSI_YELLOW}{str(stats['obfuscated_bools']):<8}")
-    print(f"{ANSI_CYAN} │  > Attributes Masked     : {ANSI_YELLOW}{str(stats['obfuscated_attributes']):<8}")
-    print(f"{ANSI_CYAN} │  > Flow Flattened        : {ANSI_YELLOW}{str(stats['flattened_functions']) + ' functions':<31}")
+    print(f"{ANSI_CYAN} │ {ANSI_BOLD}Transformations")
+    print(f"{ANSI_CYAN} │  > Strings Encrypted     : {ANSI_YELLOW}{str(stats['encrypted_strings'])}")
+    print(f"{ANSI_CYAN} │  > Ints Obfuscated       : {ANSI_YELLOW}{str(stats['obfuscated_ints'])}")
+    print(f"{ANSI_CYAN} │  > Bools Obfuscated      : {ANSI_YELLOW}{str(stats['obfuscated_bools'])}")
+    print(f"{ANSI_CYAN} │  > Attributes Masked     : {ANSI_YELLOW}{str(stats['obfuscated_attributes'])}")
+    print(f"{ANSI_CYAN} │  > Flow Flattened        : {ANSI_YELLOW}{str(stats['flattened_functions']) + ' functions'}")
     if config.get("bytecode_transformer", {}).get("enabled"):
-        print(f"{ANSI_CYAN} │  > Bytecode Encrypted    : {ANSI_YELLOW}{str(stats.get('bytecode_obfuscated_functions', 0)) + ' functions':<31}")
+        print(f"{ANSI_CYAN} │  > Bytecode Encrypted    : {ANSI_YELLOW}{str(stats.get('bytecode_obfuscated_functions', 0)) + ' functions'}")
 
     print(f"{ANSI_CYAN} ├─────────────────────────────────────────────────────────────┤")
-    print(f"{ANSI_CYAN} │ {ANSI_BOLD}{'Protection Status':<59}")
-    print(f"{ANSI_CYAN} │  > Anti-Trace            : {ANSI_GREEN}{'Active':<8}")
+    print(f"{ANSI_CYAN} │ {ANSI_BOLD}Protection Status")
+    print(f"{ANSI_CYAN} │  > Anti-Trace            : {ANSI_GREEN}Active")
 
     bc_enabled = config.get("bytecode_transformer", {}).get("enabled", False)
     wrap_enabled = config.get("bytecode_transformer", {}).get("wrap", False)
     final_wrap_status = "Enabled" if (bc_enabled and wrap_enabled) else "Disabled"
     final_wrap_color = ANSI_GREEN if (bc_enabled and wrap_enabled) else ANSI_RED
-    print(f"{ANSI_CYAN} │  > Final Wrapper         : {final_wrap_color}{final_wrap_status:<8}")
+    print(f"{ANSI_CYAN} │  > Final Wrapper         : {final_wrap_color}{final_wrap_status}")
     print(f"{ANSI_CYAN} └─────────────────────────────────────────────────────────────┘{ANSI_RESET}\n")
 
 
