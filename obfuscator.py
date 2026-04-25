@@ -387,6 +387,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
     def _flatten_control_flow(self, body):
         state_var = get_random_name(prefix="_", length=4)
+        opaque_seed = secrets.randbelow(1000) + 100
 
         declarations = []
         logic = []
@@ -400,6 +401,15 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
         self.stats["flattened_functions"] = self.stats.get("flattened_functions", 0) + 1
         blocks = []
+        
+        # We'll use a mapping for states to make them non-linear
+        # state = (actual_id * factor) ^ xor_key
+        factor = secrets.randbelow(10) + 2
+        xor_key = secrets.randbelow(254) + 1
+        
+        def encode_state(idx):
+            return (idx * factor) ^ xor_key
+
         for i, stmt in enumerate(logic):
             curr_id = i + 1
             next_id = i + 2 if i < len(logic) - 1 else 0
@@ -409,8 +419,20 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
             block_body = [stmt]
             if next_id != 0:
+                target_state = encode_state(next_id)
+                
+                # Randomized transition using more complex expressions
+                t_k = secrets.randbelow(1000) + 1
                 block_body.append(
-                    ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=next_id)))
+                    ast.Assign(
+                        targets=[ast.Name(id=state_var, ctx=ast.Store())], 
+                        value=ast.BinOp(
+                            left=ast.BinOp(left=ast.Constant(value=target_state + t_k), op=ast.Sub(), right=ast.Constant(value=t_k)),
+                            op=ast.BitXor(),
+                            right=ast.Constant(value=0)
+                        )
+                    )
+                )
             else:
                 block_body.append(
                     ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=0)))
@@ -421,14 +443,40 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
         if_chain = None
         for bid, bbody in blocks:
-            test = ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.Eq()],
-                               comparators=[ast.Constant(value=bid)])
+            encoded_bid = encode_state(bid)
+            
+            # Complex opaque predicate that looks like it depends on input but doesn't
+            # (state == encoded_bid) and ((opaque_seed * 2) % 2 == 0)
+            opaque_test = ast.Compare(
+                left=ast.BinOp(
+                    left=ast.BinOp(left=ast.Constant(value=opaque_seed), op=ast.Mult(), right=ast.Constant(value=2)),
+                    op=ast.Mod(),
+                    right=ast.Constant(value=2)
+                ),
+                ops=[ast.Eq()],
+                comparators=[ast.Constant(value=0)]
+            )
+            
+            test = ast.BoolOp(
+                op=ast.And(),
+                values=[
+                    ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.Eq()],
+                               comparators=[ast.Constant(value=encoded_bid)]),
+                    opaque_test
+                ]
+            )
+            
             if if_chain is None:
                 if_chain = ast.If(test=test, body=bbody, orelse=[])
             else:
-                if_chain = ast.If(test=test, body=bbody, orelse=[if_chain])
+                # Add a "fake" block in orelse sometimes
+                if secrets.randbelow(10) < 3:
+                    fake_body = [ast.Expr(value=ast.Call(func=ast.Name(id='id', ctx=ast.Load()), args=[ast.Constant(value=secrets.randbelow(1000))], keywords=[]))]
+                    if_chain = ast.If(test=test, body=bbody, orelse=[ast.If(test=ast.Constant(value=False), body=fake_body, orelse=[if_chain])])
+                else:
+                    if_chain = ast.If(test=test, body=bbody, orelse=[if_chain])
 
-        init_state = ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=1))
+        init_state = ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=encode_state(1)))
         while_loop = ast.While(
             test=ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.NotEq()],
                              comparators=[ast.Constant(value=0)]),
@@ -540,7 +588,24 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 compressed = raw_data
 
             k = secrets.randbelow(254) + 1
-            encoded = base64.b64encode(bytes([((b + 7) % 256) ^ k for b in compressed])).decode()
+            
+            # Multi-stage encoding with environment dependency
+            # We'll use sys.version[:3] as part of the key in the decryptor
+            # But in the obfuscator, we use it directly.
+            env_key = sum(sys.version[:3].encode()) % 256
+            
+            processed = compressed
+            for _ in range(k % 3 + 2):
+                processed = bytes([((b - 13) % 256) ^ k ^ env_key for b in processed])
+
+            n = len(processed)
+            indices = list(range(n))
+            secrets.SystemRandom().shuffle(indices)
+            shuffled = bytearray(n)
+            for i, idx in enumerate(indices):
+                shuffled[i] = processed[idx]
+            
+            encoded = base64.b64encode(bytes([((b + 13) % 256) ^ k for b in shuffled])).decode()
 
             self.wrappers_needed = True
             method = 'decrypt' if isinstance(node.value, str) else 'decrypt_b'
@@ -548,7 +613,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             self.stats["encrypted_strings"] = self.stats.get("encrypted_strings", 0) + 1
             return ast.Call(
                 func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr=method, ctx=ast.Load()),
-                args=[ast.Constant(value=encoded), ast.Constant(value=k)],
+                args=[ast.Constant(value=encoded), ast.Constant(value=k), ast.Constant(value=indices)],
                 keywords=[]
             )
         elif isinstance(node.value, int) and not isinstance(node.value, bool):
@@ -835,22 +900,34 @@ class _PyFuzorFlow:
     def elseobf(self, c): return int(not bool(c))
     def ifchk(self, c): return bool(c)
 
-    def decrypt(self, d, k):
-        import base64, zlib
+    def decrypt(self, d, k, s):
+        import base64, zlib, sys
         try:
+            ek = sum(sys.version[:3].encode()) % 256
             b = base64.b64decode(d)
-            raw = bytes([((x ^ k) - 7) % 256 for x in b])
-            try: return zlib.decompress(raw).decode('utf-8', 'ignore')
-            except: return raw.decode('utf-8', 'ignore')
+            raw = bytes([((x ^ k) - 13) % 256 for x in b])
+            sh = bytearray(len(raw))
+            for i, idx in enumerate(s): sh[idx] = raw[i]
+            res = bytes(sh)
+            for _ in range(k % 3 + 2):
+                res = bytes([((x ^ k ^ ek) + 13) % 256 for x in res])
+            try: return zlib.decompress(res).decode('utf-8', 'ignore')
+            except: return res.decode('utf-8', 'ignore')
         except: return ""
 
-    def decrypt_b(self, d, k):
-        import base64, zlib
+    def decrypt_b(self, d, k, s):
+        import base64, zlib, sys
         try:
+            ek = sum(sys.version[:3].encode()) % 256
             b = base64.b64decode(d)
-            raw = bytes([((x ^ k) - 7) % 256 for x in b])
-            try: return zlib.decompress(raw)
-            except: return raw
+            raw = bytes([((x ^ k) - 13) % 256 for x in b])
+            sh = bytearray(len(raw))
+            for i, idx in enumerate(s): sh[idx] = raw[i]
+            res = bytes(sh)
+            for _ in range(k % 3 + 2):
+                res = bytes([((x ^ k ^ ek) + 13) % 256 for x in res])
+            try: return zlib.decompress(res)
+            except: return res
         except: return b""
 
     def call(self, f, *a, **kw):
