@@ -3,9 +3,7 @@
         "enabled": true
     },
     "rename_variables": {
-        "enabled": true,
-        "prefix": "PyFuzor_",
-        "length": 10
+        "enabled": true
     },
     "anti_vm": {
         "enabled": true

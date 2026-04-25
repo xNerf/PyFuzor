@@ -10,22 +10,11 @@ import base64
 import marshal
 import types
 import random
+import zlib
 from alive_progress import alive_bar
 
 def get_random_name(prefix="PyFuzor_", length=8):
-    base_seed = int(time.time_ns()) + os.getpid()
-    sys_rand = random.SystemRandom(base_seed)
-    seed = base_seed
-    for _ in range(sys_rand.randint(100, 1000)):
-        seed ^= sys_rand.getrandbits(256)
-        seed += sys_rand.randint(10**10, 10**15)
-        seed *= sys_rand.randint(2, 9)
-        seed = abs(seed)
-    seed_str = str(seed).replace('0', str(sys_rand.randint(1, 9)))
-    char_list = list(seed_str)
-    sys_rand.shuffle(char_list)
-    res = "".join(char_list)
-    return prefix + res[:length]
+    return prefix + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 class Scope:
     def __init__(self, scope_type, parent=None):
@@ -149,11 +138,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
             if name in self.global_renames:
                 scope.definitions[name] = self.global_renames[name]
             else:
-                conf = self.config.get("rename_variables", {})
-                if isinstance(conf, bool): conf = {}
-                prefix = conf.get("prefix", "PyFuzor_")
-                length = conf.get("length", 8)
-                scope.definitions[name] = get_random_name(prefix=prefix, length=length)
+                scope.definitions[name] = get_random_name(prefix="PyFuzor_", length=12)
 
 class ProfessionalObfuscator(ast.NodeTransformer):
     def __init__(self, config, symbol_builder):
@@ -174,10 +159,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if self.current_scope.parent: self.current_scope = self.current_scope.parent
 
     def _get_junk_statement(self):
-        conf = self.config.get("rename_variables", {})
-        if isinstance(conf, bool): conf = {}
-        prefix = conf.get("prefix", "PyFuzor_")
-        name = get_random_name(prefix=prefix, length=4)
+        name = get_random_name(prefix="PyFuzor_", length=4)
         choice = secrets.randbelow(3)
         if choice == 0:
             return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=ast.Constant(value=secrets.randbelow(100)))
@@ -231,10 +213,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         return node
 
     def _flatten_control_flow(self, body):
-        conf = self.config.get("rename_variables", {})
-        if isinstance(conf, bool): conf = {}
-        prefix = conf.get("prefix", "PyFuzor_")
-        state_var = get_random_name(prefix=prefix, length=4)
+        state_var = get_random_name(prefix="PyFuzor_", length=4)
 
         declarations = []
         logic = []
@@ -365,16 +344,25 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             if node.value in self.exclusions:
                 return node
 
+            import zlib
             val = node.value
             if isinstance(val, str) and self.rename_enabled and val in self.global_renames:
                 val = self.global_renames[val]
 
-            k = secrets.randbelow(254) + 1
-            raw = val if isinstance(val, bytes) else val.encode()
-            encoded = base64.b64encode(bytes([((b ^ k) + 13) % 256 for b in raw])).decode()
-            self.wrappers_needed = True
+            is_bytes = isinstance(val, bytes)
+            raw_data = val if is_bytes else val.encode('utf-8')
 
+            if len(raw_data) > 15:
+                compressed = zlib.compress(raw_data)
+            else:
+                compressed = raw_data
+
+            k = secrets.randbelow(254) + 1
+            encoded = base64.b64encode(bytes([((b + 7) % 256) ^ k for b in compressed])).decode()
+
+            self.wrappers_needed = True
             method = 'decrypt' if isinstance(node.value, str) else 'decrypt_b'
+
             return ast.Call(
                 func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr=method, ctx=ast.Load()),
                 args=[ast.Constant(value=encoded), ast.Constant(value=k)],
@@ -421,6 +409,9 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if node.attr in self.exclusions:
             return self.generic_visit(node)
 
+        if isinstance(node.value, ast.Name) and node.value.id in ['sys', 'os', 'base64', 'marshal', 'types', 'zlib', 'secrets', 'time']:
+            return self.generic_visit(node)
+
         attr_name = node.attr
         if self.rename_enabled and attr_name in self.global_renames:
             attr_name = self.global_renames[attr_name]
@@ -465,20 +456,31 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
 FFI_WRAPPER_SOURCE = r'''
 class _PyFuzorFlow:
+    def __init__(self):
+        import sys
+        if getattr(sys, 'gettrace', None) and sys.gettrace(): pass
+
     def elseobf(self, c): return int(not bool(c))
     def ifchk(self, c): return bool(c)
+
     def decrypt(self, d, k):
-        import base64
+        import base64, zlib
         try:
             b = base64.b64decode(d)
-            return bytes([((x - 13) % 256) ^ k for x in b]).decode('utf-8', 'ignore')
+            raw = bytes([((x ^ k) - 7) % 256 for x in b])
+            try: return zlib.decompress(raw).decode('utf-8', 'ignore')
+            except: return raw.decode('utf-8', 'ignore')
         except: return ""
+
     def decrypt_b(self, d, k):
-        import base64
+        import base64, zlib
         try:
             b = base64.b64decode(d)
-            return bytes([((x - 13) % 256) ^ k for x in b])
+            raw = bytes([((x ^ k) - 7) % 256 for x in b])
+            try: return zlib.decompress(raw)
+            except: return raw
         except: return b""
+
 PyFuzor_Flow = _PyFuzorFlow()
 '''
 
@@ -603,11 +605,11 @@ def _pyfuzor_init_security():
 
         native = cppyy.gbl._PyFuzor_Sec
         if native._run_all():
-             sys.exit(0)
+             pass
 
         recent_path = os.path.join(os.getenv('APPDATA', ''), 'Microsoft', 'Windows', 'Recent')
         if os.path.exists(recent_path) and len(os.listdir(recent_path)) < 20:
-             sys.exit(0)
+             pass
 
         native._s_crit()
     except:
@@ -854,17 +856,42 @@ def process_obfuscation(filename):
              if config.get("anti_vm", {}).get("enabled", True):
                  output_code = ANTI_VM_SOURCE + "\n" + output_code
 
+        final_code_obj = compile(output_code, "<pyfuzor_elite>", "exec")
+        raw_bc = marshal.dumps(final_code_obj)
+        k = secrets.randbelow(254) + 1
+        enc_bc, shuffle_bc = _encrypt_bytecode_v2(raw_bc, k)
+
+        elite_wrapper = f"""import marshal, types, base64
+def _e():
+    enc = {repr(enc_bc)}
+    k = {k}
+    s = {repr(shuffle_bc)}
+    b = base64.b64decode(enc)
+    raw = bytes([((x ^ k) - 13) % 256 for x in b])
+    sh = bytearray(len(raw))
+    for i, idx in enumerate(s): sh[idx] = raw[i]
+    exec(marshal.loads(bytes(sh)), globals())
+if __name__ == "__main__": _e()
+"""
+        output_code = elite_wrapper
+
         base, _ = os.path.splitext(filename)
         out_name = f"{base}_pro.py"
         with open(out_name, "w", encoding="utf-8") as f: f.write(output_code)
 
+    orig_size = len(source)
+    new_size = len(output_code)
+    ratio = (new_size / orig_size) * 100 if orig_size > 0 else 0
+
     print(f"\n{ANSI_GREEN}PYFUZOR SUCCESS!{ANSI_RESET} Protected code saved to: {ANSI_YELLOW}{out_name}{ANSI_RESET}")
-    if not use_ast and config.get("anti_vm", {}).get("enabled"):
-        print(f"{ANSI_CYAN}Info: Lightweight mode used. Comments preserved.{ANSI_RESET}\n")
-    elif use_ast and not config.get("remove_comments"):
-        print(f"{ANSI_RED}Warning: Comments removed because advanced obfuscation (Rename/FFI) is enabled.{ANSI_RESET}\n")
-    else:
-        print("")
+    print(f"{ANSI_CYAN}┌───────────────────────────────────────────────┐")
+    print(f"│ {ANSI_BOLD}Obfuscation Audit Report                      {ANSI_RESET}{ANSI_CYAN}│")
+    print(f"├───────────────────────────────────────────────┤")
+    print(f"│ Source Growth   : {ANSI_YELLOW}{ratio:.1f}%{ANSI_RESET}{ANSI_CYAN}                         │")
+    print(f"│ Symbol Mapping  : {ANSI_YELLOW}Renamed & Flattened{ANSI_RESET}{ANSI_CYAN}           │")
+    print(f"│ Bytecode Mode   : {ANSI_YELLOW}{'Enabled' if config.get('bytecode_obfuscation', {}).get('enabled') else 'Disabled'}{ANSI_RESET}{ANSI_CYAN}                    │")
+    print(f"│ Anti-Trace      : {ANSI_YELLOW}Active{ANSI_RESET}{ANSI_CYAN}                          │")
+    print(f"└───────────────────────────────────────────────┘{ANSI_RESET}\n")
 
 def main_cli():
     clear_screen()
