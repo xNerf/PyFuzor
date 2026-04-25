@@ -28,8 +28,8 @@
         "enabled": true
     },
     "bytecode_transformer": {
-        "enabled": true,
-        "wrap": false,
+        "enabled": false,
+        "wrap": true,
         "min_statements": 2,
         "ignore_functions": []
     },

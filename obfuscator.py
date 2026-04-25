@@ -81,6 +81,12 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self.rename_enabled = config.get("rename_transformer", {}).get("enabled", True)
         self.global_renames = {}
 
+    def _enter_scope(self, node):
+        if node in self.scope_map: self.current_scope = self.scope_map[node]
+
+    def _exit_scope(self):
+        if self.current_scope.parent: self.current_scope = self.current_scope.parent
+
     def visit_Module(self, node):
         self.scope_map[node] = self.current_scope
         self.generic_visit(node)
@@ -151,9 +157,14 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ExceptHandler(self, node):
+        exc_scope = Scope('function', parent=self.current_scope)
+        self.scope_map[node] = exc_scope
+        old_scope = self.current_scope
+        self.current_scope = exc_scope
         if self.rename_enabled and node.name:
             self._define_name(node.name)
         self.generic_visit(node)
+        self.current_scope = old_scope
 
     def visit_ListComp(self, node):
         comp_scope = Scope('function', parent=self.current_scope)
@@ -217,6 +228,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
     def visit_ImportFrom(self, node):
         if self.rename_enabled:
             for alias in node.names:
+                if alias.name == '*': continue
                 name = alias.asname if alias.asname else alias.name
                 self._define_name(name)
 
@@ -271,11 +283,9 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
 class ImportTransformer(ast.NodeTransformer):
     def visit_ImportFrom(self, node):
-        if node.names[0].name == '*':
-            for alias in node.names:
-                alias.name = 'ALL'
-                alias.asname = get_random_name()
-        return self.generic_visit(node)
+        if any(alias.name == '*' for alias in node.names):
+            return node
+        return node
 
 
 class ProfessionalObfuscator(ast.NodeTransformer):
@@ -360,6 +370,16 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             if new_name: node.name = new_name
 
         self._enter_scope(node)
+        self.generic_visit(node)
+        node.body = self._insert_junk(node.body)
+        self._exit_scope()
+        return node
+
+    def visit_ExceptHandler(self, node):
+        self._enter_scope(node)
+        if self.rename_enabled and node.name:
+            new_name = self.current_scope.resolve(node.name)
+            if new_name: node.name = new_name
         self.generic_visit(node)
         node.body = self._insert_junk(node.body)
         self._exit_scope()
@@ -662,6 +682,148 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 res = ast.BinOp(left=res, op=ast.Add(), right=curr)
 
         return res if res else ast.Constant(value="")
+    
+    
+BYTECODE_LOADER_HEADER = '''
+import marshal as _msh
+import types as _typ
+import base64 as _b64
+
+def _pyfzr_load(enc, k, s):
+    b = _b64.b64decode(enc)
+    raw = bytes([((x ^ k) - 13) % 256 for x in b])
+    shuffled = bytearray(len(raw))
+    for i, idx in enumerate(s):
+        shuffled[idx] = raw[i]
+    code = _msh.loads(bytes(shuffled))
+    return _typ.FunctionType(code, globals())
+
+def _pyfzr_method(enc, k, s):
+    fn = _pyfzr_load(enc, k, s)
+    return fn
+'''
+
+def _encrypt_bytecode_v2(raw_bytes, key):
+    n = len(raw_bytes)
+    indices = list(range(n))
+    rng = secrets.SystemRandom()
+    rng.shuffle(indices)
+    shuffled = bytearray(n)
+    for i, idx in enumerate(indices):
+        shuffled[i] = raw_bytes[idx]
+    encoded = bytes([((b + 13) % 256) ^ key for b in shuffled])
+    return base64.b64encode(encoded).decode(), indices
+
+def _try_compile_func(node):
+    func_src = ast.unparse(node)
+    mod_code = compile(func_src, "<pyfuzor_bc>", "exec")
+    func_code = None
+    for const in mod_code.co_consts:
+        if isinstance(const, types.CodeType):
+            func_code = const
+            break
+    return func_code
+
+def apply_bytecode_obfuscation(source_code, config, stats):
+    try:
+        tree = ast.parse(source_code)
+    except SyntaxError:
+        return source_code
+
+    bc_config = config.get("bytecode_transformer", {})
+    stats["bytecode_obfuscated_functions"] = 0
+    
+    skip_names = {
+        "_pyfzr_load", "_pyfzr_method", "_pyfuzor_init_security",
+        "_PyFuzorFlow", "clear_screen", "load_config",
+        "process_obfuscation", "main_cli", "apply_bytecode_obfuscation",
+        "_encrypt_bytecode", "_encrypt_bytecode_v2", "_try_compile_func",
+    }
+
+    extra_skips = bc_config.get("ignore_functions", [])
+    if isinstance(extra_skips, list):
+        for name in extra_skips: skip_names.add(name)
+
+    min_stmts = bc_config.get("min_statements", 2)
+
+    new_body = []
+    loader_injected = False
+    method_patches = []
+
+    def _obfuscate_func(node):
+        if node.decorator_list or node.name in skip_names or len(node.body) < min_stmts:
+            return None
+        try:
+            func_code = _try_compile_func(node)
+            if func_code is None: return None
+            if func_code.co_freevars or func_code.co_cellvars: return None
+            raw = marshal.dumps(func_code)
+            marshal.loads(raw)
+            key = secrets.randbelow(254) + 1
+            enc, shuffle = _encrypt_bytecode_v2(raw, key)
+            stats["bytecode_obfuscated_functions"] += 1
+            return enc, key, shuffle
+        except Exception:
+            return None
+
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            result = _obfuscate_func(node)
+            if result:
+                enc, key, shuffle = result
+                assign = ast.Assign(
+                    targets=[ast.Name(id=node.name, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Name(id="_pyfzr_load", ctx=ast.Load()),
+                        args=[ast.Constant(value=enc), ast.Constant(value=key),
+                              ast.Constant(value=shuffle)],
+                        keywords=[]
+                    )
+                )
+                ast.fix_missing_locations(assign)
+                new_body.append(assign)
+                loader_injected = True
+            else:
+                new_body.append(node)
+
+        elif isinstance(node, ast.ClassDef):
+            new_body.append(node)
+            for item in node.body:
+                if not isinstance(item, ast.FunctionDef): continue
+                if item.name.startswith('__') and item.name.endswith('__'): continue
+                result = _obfuscate_func(item)
+                if result:
+                    enc, key, shuffle = result
+                    patch = ast.Assign(
+                        targets=[ast.Attribute(
+                            value=ast.Name(id=node.name, ctx=ast.Load()),
+                            attr=item.name,
+                            ctx=ast.Store()
+                        )],
+                        value=ast.Call(
+                            func=ast.Name(id="_pyfzr_method", ctx=ast.Load()),
+                            args=[ast.Constant(value=enc), ast.Constant(value=key),
+                                  ast.Constant(value=shuffle)],
+                            keywords=[]
+                        )
+                    )
+                    ast.fix_missing_locations(patch)
+                    method_patches.append(patch)
+                    loader_injected = True
+
+        else:
+            new_body.append(node)
+
+    new_body.extend(method_patches)
+
+    tree.body = new_body
+    ast.fix_missing_locations(tree)
+    result = ast.unparse(tree)
+
+    if loader_injected:
+        result = BYTECODE_LOADER_HEADER + result
+
+    return result
 
 
 FFI_WRAPPER_SOURCE = r'''
@@ -873,7 +1035,13 @@ def load_config():
         "boolean_transformer": {"enabled": True},
         "flow_transformer": {"enabled": True},
         "int_transformer": {"enabled": True},
-        "junk_transformer": {"enabled": True, "intensity": 15}
+        "junk_transformer": {"enabled": True, "intensity": 15},
+        "bytecode_transformer": {
+            "enabled": False,
+            "wrap": True,
+            "min_statements": 2,
+            "ignore_functions": []
+        }
     }
     if os.path.exists("config.json"):
         try:
@@ -901,6 +1069,14 @@ def load_config():
                         ext_config[new_key] = ext_config.pop(old_key)
 
                 for key, value in ext_config.items():
+                    if key == "final_wrap":
+                        enabled = value.get("enabled", True) if isinstance(value, dict) else bool(value)
+                        if "bytecode_transformer" not in ext_config:
+                            ext_config["bytecode_transformer"] = {}
+                        if isinstance(ext_config["bytecode_transformer"], dict):
+                            ext_config["bytecode_transformer"]["wrap"] = enabled
+                        continue
+
                     if key in config and isinstance(config[key], dict) and isinstance(value, dict):
                         config[key].update(value)
                     elif key in config and isinstance(config[key], dict) and isinstance(value, bool):
@@ -936,7 +1112,8 @@ def process_obfuscation(filename):
         "encrypted_strings": 0,
         "obfuscated_ints": 0,
         "obfuscated_bools": 0,
-        "obfuscated_attributes": 0
+        "obfuscated_attributes": 0,
+        "bytecode_obfuscated_functions": 0
     }
 
     with alive_bar(100, title=f'Protecting {filename}', bar='smooth', spinner='dots_waves') as bar:
@@ -945,9 +1122,9 @@ def process_obfuscation(filename):
             source = f.read()
 
         use_ast = False
-        if config.get("rename_transformer", {}).get("enabled"): use_ast = True
-        if config.get("ffi_obfuscation", {}).get("enabled"): use_ast = True
-        if config.get("remove_comment_transformer", {}).get("enabled"): use_ast = True
+        if config.get("rename_transformer", {}).get("enabled", False): use_ast = True
+        if config.get("ffi_obfuscation", {}).get("enabled", False): use_ast = True
+        if config.get("remove_comment_transformer", {}).get("enabled", False): use_ast = True
 
         output_code = ""
 
@@ -955,14 +1132,22 @@ def process_obfuscation(filename):
             for _ in range(10): time.sleep(0.01); bar()
             tree = ast.parse(source)
 
+            main_node = None
+            for node in tree.body:
+                if isinstance(node, ast.If) and isinstance(node.test, ast.Compare):
+                    if isinstance(node.test.left, ast.Name) and node.test.left.id == '__name__':
+                        if len(node.test.comparators) == 1 and isinstance(node.test.comparators[0], ast.Constant) and node.test.comparators[0].value == '__main__':
+                            main_node = node
+                            break
+
             for _ in range(20): time.sleep(0.01); bar()
             import_fixer = ImportTransformer()
             tree = import_fixer.visit(tree)
 
+            for _ in range(30): time.sleep(0.01); bar()
             builder = SymbolTableBuilder(config, exclusions, stats)
             builder.visit(tree)
 
-            for _ in range(30): time.sleep(0.01); bar()
             obfuscator = ProfessionalObfuscator(config, builder, stats)
             tree = obfuscator.visit(tree)
             ast.fix_missing_locations(tree)
@@ -975,8 +1160,15 @@ def process_obfuscation(filename):
                 antivm_tree = ast.parse(ANTI_VM_SOURCE)
                 tree.body = antivm_tree.body + tree.body
 
-            for _ in range(20): time.sleep(0.01); bar()
+            if main_node and main_node in tree.body:
+                tree.body.remove(main_node)
+                tree.body.append(main_node)
+
+            for _ in range(15): time.sleep(0.01); bar()
             output_code = ast.unparse(tree)
+
+            if config.get("bytecode_transformer", {}).get("enabled", False):
+                output_code = apply_bytecode_obfuscation(output_code, config, stats)
 
         else:
             for _ in range(60): time.sleep(0.01); bar()
@@ -984,10 +1176,41 @@ def process_obfuscation(filename):
             if config.get("antivm_transformer", {}).get("enabled", True):
                 output_code = ANTI_VM_SOURCE + "\n" + output_code
 
+        bc_conf = config.get("bytecode_transformer", {})
+        if bc_conf.get("enabled", False) and bc_conf.get("wrap", False):
+            final_code_obj = compile(output_code, "<pyfuzor_elite>", "exec")
+            raw_bc = zlib.compress(marshal.dumps(final_code_obj))
+            k = secrets.randbelow(254) + 1
+            enc_bc, shuffle_bc = _encrypt_bytecode_v2(raw_bc, k)
+
+            elite_wrapper = f"""import marshal, types, base64, zlib
+def _e():
+    enc = {repr(enc_bc)}
+    k = {k}
+    s = {repr(shuffle_bc)}
+    b = base64.b64decode(enc)
+    raw = bytes([((x ^ k) - 13) % 256 for x in b])
+    sh = bytearray(len(raw))
+    for i, idx in enumerate(s): sh[idx] = raw[i]
+    exec(marshal.loads(zlib.decompress(bytes(sh))), globals())
+if __name__ == "__main__": _e()
+"""
+            output_code = elite_wrapper
+
         base, _ = os.path.splitext(filename)
         out_name = f"{base}_pro.py"
         with open(out_name, "w", encoding="utf-8") as f:
             f.write(output_code)
+
+        try:
+            current = int(bar.current)
+            remaining = 100 - current
+            if remaining > 0:
+                for _ in range(remaining):
+                    time.sleep(0.005)
+                    bar()
+        except:
+            pass
 
     orig_size = len(source)
     new_size = len(output_code)
@@ -995,21 +1218,30 @@ def process_obfuscation(filename):
 
     print(f"\n{ANSI_GREEN} SUCCESS {ANSI_RESET} Protected code saved to: {ANSI_YELLOW}{out_name}{ANSI_RESET}")
     print(f"{ANSI_CYAN} ┌─────────────────────────────────────────────────────────────┐")
-    print(f" │ {ANSI_BOLD}Core Metrics{ANSI_RESET}{ANSI_CYAN}                                                │")
-    print(f" │  > Source Growth         : {ANSI_YELLOW}{ratio:8.1f}%{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" │  > Symbols Renamed       : {ANSI_YELLOW}{stats['renamed_symbols']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" │  > Junk Statements Added : {ANSI_YELLOW}{stats['junk_statements']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" ├─────────────────────────────────────────────────────────────┤")
-    print(f" │ {ANSI_BOLD}Transformations{ANSI_RESET}{ANSI_CYAN}                                             │")
-    print(f" │  > Strings Encrypted     : {ANSI_YELLOW}{stats['encrypted_strings']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" │  > Ints Obfuscated       : {ANSI_YELLOW}{stats['obfuscated_ints']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" │  > Bools Obfuscated      : {ANSI_YELLOW}{stats['obfuscated_bools']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" │  > Attributes Masked     : {ANSI_YELLOW}{stats['obfuscated_attributes']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" │  > Flow Flattened        : {ANSI_YELLOW}{stats['flattened_functions']:8} functions{ANSI_RESET}{ANSI_CYAN}                  │")
-    print(f" ├─────────────────────────────────────────────────────────────┤")
-    print(f" │ {ANSI_BOLD}Protection Status{ANSI_RESET}{ANSI_CYAN}                                           │")
-    print(f" │  > Anti-Trace            : {ANSI_GREEN}Active  {ANSI_RESET}{ANSI_CYAN}                            │")
-    print(f" └─────────────────────────────────────────────────────────────┘{ANSI_RESET}\n")
+    print(f"{ANSI_CYAN} │ {ANSI_BOLD}{'Core Metrics':<59}")
+    print(f"{ANSI_CYAN} │  > Source Growth         : {ANSI_YELLOW}{ratio:>8.1f}%")
+    print(f"{ANSI_CYAN} │  > Symbols Renamed       : {ANSI_YELLOW}{str(stats['renamed_symbols']):<8}")
+    print(f"{ANSI_CYAN} │  > Junk Statements Added : {ANSI_YELLOW}{str(stats['junk_statements']):<8}")
+    print(f"{ANSI_CYAN} ├─────────────────────────────────────────────────────────────┤")
+    print(f"{ANSI_CYAN} │ {ANSI_BOLD}{'Transformations':<59}")
+    print(f"{ANSI_CYAN} │  > Strings Encrypted     : {ANSI_YELLOW}{str(stats['encrypted_strings']):<8}")
+    print(f"{ANSI_CYAN} │  > Ints Obfuscated       : {ANSI_YELLOW}{str(stats['obfuscated_ints']):<8}")
+    print(f"{ANSI_CYAN} │  > Bools Obfuscated      : {ANSI_YELLOW}{str(stats['obfuscated_bools']):<8}")
+    print(f"{ANSI_CYAN} │  > Attributes Masked     : {ANSI_YELLOW}{str(stats['obfuscated_attributes']):<8}")
+    print(f"{ANSI_CYAN} │  > Flow Flattened        : {ANSI_YELLOW}{str(stats['flattened_functions']) + ' functions':<31}")
+    if config.get("bytecode_transformer", {}).get("enabled"):
+        print(f"{ANSI_CYAN} │  > Bytecode Encrypted    : {ANSI_YELLOW}{str(stats.get('bytecode_obfuscated_functions', 0)) + ' functions':<31}")
+
+    print(f"{ANSI_CYAN} ├─────────────────────────────────────────────────────────────┤")
+    print(f"{ANSI_CYAN} │ {ANSI_BOLD}{'Protection Status':<59}")
+    print(f"{ANSI_CYAN} │  > Anti-Trace            : {ANSI_GREEN}{'Active':<8}")
+
+    bc_enabled = config.get("bytecode_transformer", {}).get("enabled", False)
+    wrap_enabled = config.get("bytecode_transformer", {}).get("wrap", False)
+    final_wrap_status = "Enabled" if (bc_enabled and wrap_enabled) else "Disabled"
+    final_wrap_color = ANSI_GREEN if (bc_enabled and wrap_enabled) else ANSI_RED
+    print(f"{ANSI_CYAN} │  > Final Wrapper         : {final_wrap_color}{final_wrap_status:<8}")
+    print(f"{ANSI_CYAN} └─────────────────────────────────────────────────────────────┘{ANSI_RESET}\n")
 
 
 def main_cli():

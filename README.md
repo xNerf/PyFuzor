@@ -16,15 +16,16 @@ This tool makes your Python scripts impossible to read and reverse-engineer. It 
 
 ## ⚙️ Configuration (`config.json`)
 
-| Option | What it does |
-| :--- | :--- |
-| `rename_transformer` | Changes variable, function, and class names. |
-| `string_transformer` | Hides all text and strings. |
-| `flow_transformer` | Turns your code into a "state machine" to hide the logic flow. |
-| `bytecode_transformer` | Encrypts functions into raw bytecode. |
-| `junk_transformer` | Adds distracting "fake" code. |
-| `ffi_obfuscation` | Hides how you call Python functions. |
-| `antivm_transformer` | Stops the script if a debugger is detected. |
+| Option | What it does                                                                    |
+| :--- |:--------------------------------------------------------------------------------|
+| `rename_transformer` | Changes variable, function, and class names.                                    |
+| `string_transformer` | Hides all text and strings.                                                     |
+| `flow_transformer` | Turns your code into a "state machine" to hide the logic flow.                  |
+| `bytecode_transformer` | Encrypts functions into raw bytecode.                                           |
+| `final_wrap` | Compresses and marshals the entire code into a single encrypted execution stub. |
+| `junk_transformer` | Adds distracting "fake" code.                                                   |
+| `ffi_obfuscation` | Hides how you call Python functions.                                            |
+| `antivm_transformer` | Stops the script if a debugger is detected.                                     |
 
 ## 📝 Skipping Names (`exclusions.txt`)
 
@@ -75,9 +76,13 @@ route
     print("Done")
     ```
 
-### 5. Bytecode Transformer
-*   **Before:** `def my_func(): print("Hello")`
-*   **After:** `my_func = _pyfzr_load("PyFuzor_EncryptedBytecodeData...", 13, [Indices...])`
+### 5. Bytecode Transformer & Elite Wrapper
+*   **Bytecode Obfuscation:** `def my_func(): print("Hello")` becomes `my_func = _pyfzr_load("EncryptedData...", key, indices)`.
+*   **Elite Wrapper:** Your entire code is compressed with `zlib`, marshaled, and wrapped in a loader:
+    ```python
+    import marshal, zlib, base64
+    exec(marshal.loads(zlib.decompress(base64.b64decode("..."))))
+    ```
 
 ---
 
