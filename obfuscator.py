@@ -14,7 +14,19 @@ import zlib
 from alive_progress import alive_bar
 
 def get_random_name(prefix="PyFuzor_", length=8):
-    return prefix + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
+    base_seed = int(time.time_ns()) + os.getpid()
+    sys_rand = random.SystemRandom(base_seed)
+    seed = base_seed
+    for _ in range(sys_rand.randint(100, 1000)):
+        seed ^= sys_rand.getrandbits(256)
+        seed += sys_rand.randint(10**10, 10**15)
+        seed *= sys_rand.randint(2, 9)
+        seed = abs(seed)
+    seed_str = str(seed).replace('0', str(sys_rand.randint(1, 9)))
+    char_list = list(seed_str)
+    sys_rand.shuffle(char_list)
+    res = "".join(char_list)
+    return prefix + res[:length]
 
 class Scope:
     def __init__(self, scope_type, parent=None):
