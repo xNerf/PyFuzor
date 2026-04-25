@@ -2,11 +2,15 @@
     "ffi_obfuscation": {
         "enabled": true
     },
+    "rename_variables": {
+        "enabled": true,
+        "prefix": "PyFuzor_",
+        "length": 10
+    },
     "anti_vm": {
         "enabled": true
     },
     "remove_comments": true,
-    "rename_variables": true,
     "string_encryption": {
         "enabled": true
     },
@@ -20,6 +24,7 @@
         "enabled": true
     },
     "junk_code": {
-        "enabled": true
+        "enabled": true,
+        "intensity": 20
     }
 }

@@ -9,8 +9,8 @@ import time
 import base64
 from alive_progress import alive_bar
 
-def get_random_name(length=8):
-    return "PyFuzor_" + ''.join(secrets.choice(string.hexdigits) for _ in range(length))
+def get_random_name(prefix="PyFuzor_", length=8, charset=string.ascii_letters + string.digits):
+    return prefix + ''.join(secrets.choice(charset) for _ in range(length))
 
 class Scope:
     def __init__(self, scope_type, parent=None):
@@ -133,7 +133,11 @@ class SymbolTableBuilder(ast.NodeVisitor):
             if name in self.global_renames:
                 scope.definitions[name] = self.global_renames[name]
             else:
-                scope.definitions[name] = get_random_name()
+                conf = self.config.get("rename_variables", {})
+                if isinstance(conf, bool): conf = {}
+                prefix = conf.get("prefix", "PyFuzor_")
+                length = conf.get("length", 8)
+                scope.definitions[name] = get_random_name(prefix=prefix, length=length)
 
 class ProfessionalObfuscator(ast.NodeTransformer):
     def __init__(self, config, symbol_builder):
@@ -153,7 +157,10 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if self.current_scope.parent: self.current_scope = self.current_scope.parent
 
     def _get_junk_statement(self):
-        name = get_random_name(length=4)
+        conf = self.config.get("rename_variables", {})
+        if isinstance(conf, bool): conf = {}
+        prefix = conf.get("prefix", "PyFuzor_")
+        name = get_random_name(prefix=prefix, length=4)
         choice = secrets.randbelow(3)
         if choice == 0:
             return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=ast.Constant(value=secrets.randbelow(100)))
@@ -163,11 +170,14 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             return ast.If(test=ast.Constant(value=False), body=[ast.Pass()], orelse=[])
 
     def _insert_junk(self, body):
-        if not self.config.get("junk_code", {}).get("enabled", True):
+        conf = self.config.get("junk_code", {})
+        if not conf.get("enabled", True):
             return body
+
+        intensity = conf.get("intensity", 15) # max. 100
         new_body = []
         for stmt in body:
-            if secrets.randbelow(100) < 15:
+            if secrets.randbelow(100) < intensity:
                 new_body.append(self._get_junk_statement())
             new_body.append(stmt)
         return new_body
@@ -204,7 +214,10 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         return node
 
     def _flatten_control_flow(self, body):
-        state_var = get_random_name(length=4)
+        conf = self.config.get("rename_variables", {})
+        if isinstance(conf, bool): conf = {}
+        prefix = conf.get("prefix", "PyFuzor_")
+        state_var = get_random_name(prefix=prefix, length=4)
 
         declarations = []
         logic = []
