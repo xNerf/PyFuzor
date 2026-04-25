@@ -1,4 +1,4 @@
-# 🛡️ Advanced Python Obfuscator (PRO)
+# 🛡️ PyFuzor Obfuscator v2.0
 
 This tool makes your Python scripts impossible to read and reverse-engineer. It "scrambles" your code using professional techniques while keeping it fully functional.
 
