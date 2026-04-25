@@ -13,13 +13,14 @@ import random
 import zlib
 from alive_progress import alive_bar
 
+
 def get_random_name(prefix="PyFuzor_", length=8):
     base_seed = int(time.time_ns()) + os.getpid()
     sys_rand = random.SystemRandom(base_seed)
     seed = base_seed
     for _ in range(sys_rand.randint(100, 1000)):
         seed ^= sys_rand.getrandbits(256)
-        seed += sys_rand.randint(10**10, 10**15)
+        seed += sys_rand.randint(10 ** 10, 10 ** 15)
         seed *= sys_rand.randint(2, 9)
         seed = abs(seed)
     seed_str = str(seed).replace('0', str(sys_rand.randint(1, 9)))
@@ -27,6 +28,7 @@ def get_random_name(prefix="PyFuzor_", length=8):
     sys_rand.shuffle(char_list)
     res = "".join(char_list)
     return prefix + res[:length]
+
 
 class Scope:
     def __init__(self, scope_type, parent=None):
@@ -42,9 +44,9 @@ class Scope:
         if name in self.globals:
             return self.resolve_global(name)
         if name in self.nonlocals:
-             if self.parent:
-                 return self.parent.resolve(name)
-             return None
+            if self.parent:
+                return self.parent.resolve(name)
+            return None
         curr = self.parent
         while curr:
             if curr.scope_type == 'class':
@@ -64,7 +66,9 @@ class Scope:
             return self.parent.resolve_global(name)
         return None
 
+
 cl_builtins = set(dir(builtins))
+
 
 class SymbolTableBuilder(ast.NodeVisitor):
     def __init__(self, config, exclusions, stats):
@@ -83,7 +87,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
     def visit_ClassDef(self, node):
         if self.rename_enabled and self.config.get("rename_transformer", {}).get("classes", True):
-             self._define_name(node.name, is_attr=True)
+            self._define_name(node.name, is_attr=True)
 
         class_scope = Scope('class', parent=self.current_scope)
         self.scope_map[node] = class_scope
@@ -110,11 +114,99 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_scope = old_scope
 
+    def visit_AsyncFunctionDef(self, node):
+        if self.rename_enabled and self.config.get("rename_transformer", {}).get("functions", True):
+            self._define_name(node.name, is_attr=True)
+
+        func_scope = Scope('function', parent=self.current_scope)
+        self.scope_map[node] = func_scope
+        old_scope = self.current_scope
+        self.current_scope = func_scope
+
+        if self.rename_enabled and self.config.get("rename_transformer", {}).get("locals", True):
+            for arg in (node.args.args + node.args.kwonlyargs):
+                self._define_name(arg.arg, is_attr=True)
+            if node.args.vararg: self._define_name(node.args.vararg.arg, is_attr=True)
+            if node.args.kwarg: self._define_name(node.args.kwarg.arg, is_attr=True)
+
+        self.generic_visit(node)
+        self.current_scope = old_scope
+
     def visit_Global(self, node):
         for name in node.names: self.current_scope.globals.add(name)
 
     def visit_Nonlocal(self, node):
         for name in node.names: self.current_scope.nonlocals.add(name)
+
+    def visit_For(self, node):
+        if self.rename_enabled and isinstance(node.target, ast.Name):
+            self._define_name(node.target.id)
+        self.generic_visit(node)
+
+    def visit_With(self, node):
+        if self.rename_enabled:
+            for item in node.items:
+                if item.optional_vars and isinstance(item.optional_vars, ast.Name):
+                    self._define_name(item.optional_vars.id)
+        self.generic_visit(node)
+
+    def visit_ExceptHandler(self, node):
+        if self.rename_enabled and node.name:
+            self._define_name(node.name)
+        self.generic_visit(node)
+
+    def visit_ListComp(self, node):
+        comp_scope = Scope('function', parent=self.current_scope)
+        self.scope_map[node] = comp_scope
+        old_scope = self.current_scope
+        self.current_scope = comp_scope
+        if self.rename_enabled:
+            for generator in node.generators:
+                if isinstance(generator.target, ast.Name):
+                    self._define_name(generator.target.id)
+        self.generic_visit(node)
+        self.current_scope = old_scope
+
+    def visit_SetComp(self, node):
+        comp_scope = Scope('function', parent=self.current_scope)
+        self.scope_map[node] = comp_scope
+        old_scope = self.current_scope
+        self.current_scope = comp_scope
+        if self.rename_enabled:
+            for generator in node.generators:
+                if isinstance(generator.target, ast.Name):
+                    self._define_name(generator.target.id)
+        self.generic_visit(node)
+        self.current_scope = old_scope
+
+    def visit_DictComp(self, node):
+        comp_scope = Scope('function', parent=self.current_scope)
+        self.scope_map[node] = comp_scope
+        old_scope = self.current_scope
+        self.current_scope = comp_scope
+        if self.rename_enabled:
+            for generator in node.generators:
+                if isinstance(generator.target, ast.Name):
+                    self._define_name(generator.target.id)
+        self.generic_visit(node)
+        self.current_scope = old_scope
+
+    def visit_GeneratorExp(self, node):
+        comp_scope = Scope('function', parent=self.current_scope)
+        self.scope_map[node] = comp_scope
+        old_scope = self.current_scope
+        self.current_scope = comp_scope
+        if self.rename_enabled:
+            for generator in node.generators:
+                if isinstance(generator.target, ast.Name):
+                    self._define_name(generator.target.id)
+        self.generic_visit(node)
+        self.current_scope = old_scope
+
+    def visit_AugAssign(self, node):
+        if self.rename_enabled and isinstance(node.target, ast.Name):
+            self._define_name(node.target.id)
+        self.generic_visit(node)
 
     def visit_Import(self, node):
         if self.rename_enabled:
@@ -132,7 +224,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
         if self.rename_enabled and isinstance(node.ctx, ast.Store):
             is_attr = (self.current_scope.scope_type == 'class')
             is_global = (self.current_scope.scope_type == 'global')
-            
+
             should_rename = False
             if is_attr:
                 should_rename = True
@@ -142,15 +234,19 @@ class SymbolTableBuilder(ast.NodeVisitor):
             else:
                 if self.config.get("rename_transformer", {}).get("locals", True):
                     should_rename = True
-                    
+
             if should_rename:
                 self._define_name(node.id, is_attr=is_attr)
 
     def _define_name(self, name, is_attr=False):
-        if name in self.exclusions or (name.startswith('__') and name.endswith('__')) or name in cl_builtins:
+        if not name or name in self.exclusions or (name.startswith('__') and name.endswith('__')) or name in cl_builtins:
             return
 
         if not self.rename_enabled:
+            return
+
+        scope = self.current_scope
+        if name in scope.globals or name in scope.nonlocals:
             return
 
         if is_attr:
@@ -159,10 +255,11 @@ class SymbolTableBuilder(ast.NodeVisitor):
             self.current_scope.definitions[name] = self.global_renames[name]
             return
 
-        scope = self.current_scope
-        if name in scope.globals: scope = self.root_scope
-        elif name in scope.nonlocals: return
-        
+        if name in scope.globals:
+            scope = self.root_scope
+        elif name in scope.nonlocals:
+            return
+
         if name not in scope.definitions:
             self.stats["renamed_symbols"] = self.stats.get("renamed_symbols", 0) + 1
             if name in self.global_renames:
@@ -170,6 +267,16 @@ class SymbolTableBuilder(ast.NodeVisitor):
             else:
                 prefix = "PyFuzor_L_" if scope.scope_type == 'function' else "PyFuzor_"
                 scope.definitions[name] = get_random_name(prefix=prefix, length=12)
+
+
+class ImportTransformer(ast.NodeTransformer):
+    def visit_ImportFrom(self, node):
+        if node.names[0].name == '*':
+            for alias in node.names:
+                alias.name = 'ALL'
+                alias.asname = get_random_name()
+        return self.generic_visit(node)
+
 
 class ProfessionalObfuscator(ast.NodeTransformer):
     def __init__(self, config, symbol_builder, stats):
@@ -186,6 +293,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
     def _enter_scope(self, node):
         if node in self.scope_map: self.current_scope = self.scope_map[node]
+
     def _exit_scope(self):
         if self.current_scope.parent: self.current_scope = self.current_scope.parent
 
@@ -193,9 +301,11 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         name = get_random_name(prefix="_", length=4)
         choice = secrets.randbelow(3)
         if choice == 0:
-            return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=ast.Constant(value=secrets.randbelow(100)))
+            return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())],
+                              value=ast.Constant(value=secrets.randbelow(100)))
         elif choice == 1:
-            return ast.Expr(value=ast.Call(func=ast.Name(id='len', ctx=ast.Load()), args=[ast.Constant(value=name)], keywords=[]))
+            return ast.Expr(
+                value=ast.Call(func=ast.Name(id='len', ctx=ast.Load()), args=[ast.Constant(value=name)], keywords=[]))
         else:
             return ast.If(test=ast.Constant(value=False), body=[ast.Pass()], orelse=[])
 
@@ -204,7 +314,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if not conf.get("enabled", True):
             return body
 
-        intensity = conf.get("intensity", 15) # max. 100
+        intensity = conf.get("intensity", 15)
         new_body = []
         for stmt in body:
             if secrets.randbelow(100) < intensity:
@@ -244,6 +354,17 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         self._exit_scope()
         return node
 
+    def visit_AsyncFunctionDef(self, node):
+        if self.rename_enabled:
+            new_name = self.current_scope.resolve(node.name)
+            if new_name: node.name = new_name
+
+        self._enter_scope(node)
+        self.generic_visit(node)
+        node.body = self._insert_junk(node.body)
+        self._exit_scope()
+        return node
+
     def _flatten_control_flow(self, body):
         state_var = get_random_name(prefix="_", length=4)
 
@@ -268,9 +389,11 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
             block_body = [stmt]
             if next_id != 0:
-                block_body.append(ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=next_id)))
+                block_body.append(
+                    ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=next_id)))
             else:
-                block_body.append(ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=0)))
+                block_body.append(
+                    ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=0)))
 
             blocks.append((curr_id, block_body))
 
@@ -278,7 +401,8 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
         if_chain = None
         for bid, bbody in blocks:
-            test = ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.Eq()], comparators=[ast.Constant(value=bid)])
+            test = ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.Eq()],
+                               comparators=[ast.Constant(value=bid)])
             if if_chain is None:
                 if_chain = ast.If(test=test, body=bbody, orelse=[])
             else:
@@ -286,7 +410,8 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
         init_state = ast.Assign(targets=[ast.Name(id=state_var, ctx=ast.Store())], value=ast.Constant(value=1))
         while_loop = ast.While(
-            test=ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.NotEq()], comparators=[ast.Constant(value=0)]),
+            test=ast.Compare(left=ast.Name(id=state_var, ctx=ast.Load()), ops=[ast.NotEq()],
+                             comparators=[ast.Constant(value=0)]),
             body=[if_chain] if if_chain else [ast.Pass()],
             orelse=[]
         )
@@ -355,13 +480,18 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             func=ast.Subscript(
                 value=ast.List(
                     elts=[
-                        ast.Lambda(args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]), body=node.body),
-                        ast.Lambda(args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]), body=node.orelse)
+                        ast.Lambda(
+                            args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
+                            body=node.body),
+                        ast.Lambda(
+                            args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
+                            body=node.orelse)
                     ],
                     ctx=ast.Load()
                 ),
                 slice=ast.Call(
-                    func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr='elseobf', ctx=ast.Load()),
+                    func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr='elseobf',
+                                       ctx=ast.Load()),
                     args=[node.test], keywords=[]
                 ),
                 ctx=ast.Load()
@@ -377,7 +507,6 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             if node.value in self.exclusions:
                 return node
 
-            import zlib
             val = node.value
             if isinstance(val, str) and self.rename_enabled and val in self.global_renames:
                 val = self.global_renames[val]
@@ -410,10 +539,12 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 op_type = secrets.choice(['add', 'xor'])
                 if op_type == 'add':
                     offset = secrets.randbelow(100) + 1
-                    return ast.BinOp(left=ast.Constant(value=node.value - offset), op=ast.Add(), right=ast.Constant(value=offset))
+                    return ast.BinOp(left=ast.Constant(value=node.value - offset), op=ast.Add(),
+                                     right=ast.Constant(value=offset))
                 else:
                     k = secrets.randbelow(254) + 1
-                    return ast.BinOp(left=ast.Constant(value=node.value ^ k), op=ast.BitXor(), right=ast.Constant(value=k))
+                    return ast.BinOp(left=ast.Constant(value=node.value ^ k), op=ast.BitXor(),
+                                     right=ast.Constant(value=k))
         elif isinstance(node.value, bool):
             if not self.config.get("boolean_transformer", {}).get("enabled", True):
                 return node
@@ -423,20 +554,28 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             self.stats["obfuscated_bools"] = self.stats.get("obfuscated_bools", 0) + 1
             if val:
                 if choice == 0:
-                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(100)), op=ast.BitAnd(), right=ast.Constant(value=0)), ops=[ast.Eq()], comparators=[ast.Constant(value=0)])
+                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(100)), op=ast.BitAnd(),
+                                                      right=ast.Constant(value=0)), ops=[ast.Eq()],
+                                       comparators=[ast.Constant(value=0)])
                 elif choice == 1:
-                    return ast.UnaryOp(op=ast.Not(), operand=ast.Compare(left=ast.Constant(value=1), ops=[ast.Eq()], comparators=[ast.Constant(value=2)]))
+                    return ast.UnaryOp(op=ast.Not(), operand=ast.Compare(left=ast.Constant(value=1), ops=[ast.Eq()],
+                                                                         comparators=[ast.Constant(value=2)]))
                 elif choice == 2:
-                    return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Lt()], comparators=[ast.Constant(value=200)])
+                    return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Lt()],
+                                       comparators=[ast.Constant(value=200)])
                 else:
-                    return ast.UnaryOp(op=ast.Not(), operand=ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3]))))
+                    return ast.UnaryOp(op=ast.Not(), operand=ast.UnaryOp(op=ast.Not(), operand=ast.Constant(
+                        value=secrets.choice([1, 2, 3]))))
             else:
                 if choice == 0:
-                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(100)), op=ast.BitAnd(), right=ast.Constant(value=0)), ops=[ast.NotEq()], comparators=[ast.Constant(value=0)])
+                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(100)), op=ast.BitAnd(),
+                                                      right=ast.Constant(value=0)), ops=[ast.NotEq()],
+                                       comparators=[ast.Constant(value=0)])
                 elif choice == 1:
                     return ast.Compare(left=ast.Constant(value=1), ops=[ast.Eq()], comparators=[ast.Constant(value=2)])
                 elif choice == 2:
-                    return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Gt()], comparators=[ast.Constant(value=200)])
+                    return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Gt()],
+                                       comparators=[ast.Constant(value=200)])
                 else:
                     return ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3])))
         return node
@@ -444,9 +583,10 @@ class ProfessionalObfuscator(ast.NodeTransformer):
     def visit_Call(self, node):
         if not self.ffi_enabled: return self.generic_visit(node)
 
-        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and node.func.value.id == self.flow_lib_name:
+        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value,
+                                                               ast.Name) and node.func.value.id == self.flow_lib_name:
             return self.generic_visit(node)
-            
+
         self.wrappers_needed = True
         self.generic_visit(node)
 
@@ -462,7 +602,8 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         if node.attr in self.exclusions:
             return self.generic_visit(node)
 
-        if isinstance(node.value, ast.Name) and node.value.id in ['sys', 'os', 'base64', 'marshal', 'types', 'zlib', 'secrets', 'time']:
+        if isinstance(node.value, ast.Name) and node.value.id in ['sys', 'os', 'base64', 'marshal', 'types', 'zlib',
+                                                                  'secrets', 'time']:
             return self.generic_visit(node)
 
         attr_name = node.attr
@@ -478,7 +619,8 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             if self.ffi_enabled:
                 self.wrappers_needed = True
                 return ast.Call(
-                    func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr='get', ctx=ast.Load()),
+                    func=ast.Attribute(value=ast.Name(id=self.flow_lib_name, ctx=ast.Load()), attr='get',
+                                       ctx=ast.Load()),
                     args=[self.visit(node.value), ast.Constant(value=attr_name)],
                     keywords=[]
                 )
@@ -504,17 +646,23 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             elif isinstance(val, ast.FormattedValue):
                 expr = self.visit(val.value)
                 if val.format_spec:
-                    curr = ast.Call(func=ast.Name(id='format', ctx=ast.Load()), args=[expr, self.visit(val.format_spec)], keywords=[])
+                    curr = ast.Call(func=ast.Name(id='format', ctx=ast.Load()),
+                                    args=[expr, self.visit(val.format_spec)], keywords=[])
                 else:
                     fname = 'str'
-                    if val.conversion == 114: fname = 'repr'
-                    elif val.conversion == 97: fname = 'ascii'
+                    if val.conversion == 114:
+                        fname = 'repr'
+                    elif val.conversion == 97:
+                        fname = 'ascii'
                     curr = ast.Call(func=ast.Name(id=fname, ctx=ast.Load()), args=[expr], keywords=[])
 
-            if res is None: res = curr
-            else: res = ast.BinOp(left=res, op=ast.Add(), right=curr)
+            if res is None:
+                res = curr
+            else:
+                res = ast.BinOp(left=res, op=ast.Add(), right=curr)
 
         return res if res else ast.Constant(value="")
+
 
 FFI_WRAPPER_SOURCE = r'''
 class _PyFuzorFlow:
@@ -555,10 +703,11 @@ PyFuzor_Flow = _PyFuzorFlow()
 ANTI_VM_SOURCE = r'''
 def _pyfuzor_init_security():
     try:
-        import cppyy
         import sys
         import os
-        cppyy.cppdef("""
+        try:
+            import cppyy
+            cppyy.cppdef("""
         #include <windows.h>
         #include <winternl.h>
         #include <string>
@@ -670,16 +819,10 @@ def _pyfuzor_init_security():
             }
         };
         """)
-
-        native = cppyy.gbl._PyFuzor_Sec
-        if native._run_all():
-             pass
-
-        recent_path = os.path.join(os.getenv('APPDATA', ''), 'Microsoft', 'Windows', 'Recent')
-        if os.path.exists(recent_path) and len(os.listdir(recent_path)) < 20:
-             pass
-
-        native._s_crit()
+            native = cppyy.gbl._PyFuzor_Sec
+            native._run_all()
+        except:
+            pass
     except:
         pass
 
@@ -708,149 +851,10 @@ LOGO = f"""
 {ANSI_CYAN}         --- PYFUZOR OBFUSCATOR V2.0 (PRO) ---
 {ANSI_RESET}"""
 
-BYTECODE_LOADER_HEADER = '''
-import marshal as _msh
-import types as _typ
-import base64 as _b64
-
-def _pyfzr_load(enc, k, s):
-    b = _b64.b64decode(enc)
-    raw = bytes([((x ^ k) - 13) % 256 for x in b])
-    shuffled = bytearray(len(raw))
-    for i, idx in enumerate(s):
-        shuffled[idx] = raw[i]
-    code = _msh.loads(bytes(shuffled))
-    return _typ.FunctionType(code, globals())
-
-def _pyfzr_method(enc, k, s):
-    fn = _pyfzr_load(enc, k, s)
-    return fn
-'''
-
-def _encrypt_bytecode_v2(raw_bytes, key):
-    n = len(raw_bytes)
-    indices = list(range(n))
-    rng = secrets.SystemRandom()
-    rng.shuffle(indices)
-    shuffled = bytearray(n)
-    for i, idx in enumerate(indices):
-        shuffled[i] = raw_bytes[idx]
-    encoded = bytes([((b + 13) % 256) ^ key for b in shuffled])
-    return base64.b64encode(encoded).decode(), indices
-
-def _try_compile_func(node):
-    func_src = ast.unparse(node)
-    mod_code = compile(func_src, "<pyfuzor_bc>", "exec")
-    func_code = None
-    for const in mod_code.co_consts:
-        if isinstance(const, types.CodeType):
-            func_code = const
-            break
-    return func_code
-
-def apply_bytecode_obfuscation(source_code, config, stats):
-    try:
-        tree = ast.parse(source_code)
-    except SyntaxError:
-        return source_code
-
-    bc_config = config.get("bytecode_transformer", {})
-    stats["bytecode_obfuscated_functions"] = 0
-    
-    skip_names = {
-        "_pyfzr_load", "_pyfzr_method", "_pyfuzor_init_security",
-        "_PyFuzorFlow", "clear_screen", "load_config",
-        "process_obfuscation", "main_cli", "apply_bytecode_obfuscation",
-        "_encrypt_bytecode", "_encrypt_bytecode_v2", "_try_compile_func",
-    }
-
-    extra_skips = bc_config.get("ignore_functions", [])
-    if isinstance(extra_skips, list):
-        for name in extra_skips: skip_names.add(name)
-
-    min_stmts = bc_config.get("min_statements", 2)
-
-    new_body = []
-    loader_injected = False
-    method_patches = []
-
-    def _obfuscate_func(node):
-        if node.decorator_list or node.name in skip_names or len(node.body) < min_stmts:
-            return None
-        try:
-            func_code = _try_compile_func(node)
-            if func_code is None: return None
-            if func_code.co_freevars or func_code.co_cellvars: return None
-            raw = marshal.dumps(func_code)
-            marshal.loads(raw)
-            key = secrets.randbelow(254) + 1
-            enc, shuffle = _encrypt_bytecode_v2(raw, key)
-            stats["bytecode_obfuscated_functions"] += 1
-            return enc, key, shuffle
-        except Exception:
-            return None
-
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef):
-            result = _obfuscate_func(node)
-            if result:
-                enc, key, shuffle = result
-                assign = ast.Assign(
-                    targets=[ast.Name(id=node.name, ctx=ast.Store())],
-                    value=ast.Call(
-                        func=ast.Name(id="_pyfzr_load", ctx=ast.Load()),
-                        args=[ast.Constant(value=enc), ast.Constant(value=key),
-                              ast.Constant(value=shuffle)],
-                        keywords=[]
-                    )
-                )
-                ast.fix_missing_locations(assign)
-                new_body.append(assign)
-                loader_injected = True
-            else:
-                new_body.append(node)
-
-        elif isinstance(node, ast.ClassDef):
-            new_body.append(node)
-            for item in node.body:
-                if not isinstance(item, ast.FunctionDef): continue
-                if item.name.startswith('__') and item.name.endswith('__'): continue
-                result = _obfuscate_func(item)
-                if result:
-                    enc, key, shuffle = result
-                    patch = ast.Assign(
-                        targets=[ast.Attribute(
-                            value=ast.Name(id=node.name, ctx=ast.Load()),
-                            attr=item.name,
-                            ctx=ast.Store()
-                        )],
-                        value=ast.Call(
-                            func=ast.Name(id="_pyfzr_method", ctx=ast.Load()),
-                            args=[ast.Constant(value=enc), ast.Constant(value=key),
-                                  ast.Constant(value=shuffle)],
-                            keywords=[]
-                        )
-                    )
-                    ast.fix_missing_locations(patch)
-                    method_patches.append(patch)
-                    loader_injected = True
-
-        else:
-            new_body.append(node)
-
-    new_body.extend(method_patches)
-
-    tree.body = new_body
-    ast.fix_missing_locations(tree)
-    result = ast.unparse(tree)
-
-    if loader_injected:
-        result = BYTECODE_LOADER_HEADER + result
-
-    return result
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
+
 
 def load_config():
     config = {
@@ -868,12 +872,6 @@ def load_config():
         "attribute_obfuscation": {"enabled": True},
         "boolean_transformer": {"enabled": True},
         "flow_transformer": {"enabled": True},
-        "bytecode_transformer": {
-            "enabled": False,
-            "wrap": True,
-            "min_statements": 2,
-            "ignore_functions": []
-        },
         "int_transformer": {"enabled": True},
         "junk_transformer": {"enabled": True, "intensity": 15}
     }
@@ -894,22 +892,13 @@ def load_config():
                     "attribute_obfuscation_legacy": "attribute_obfuscation",
                     "boolean_obfuscation": "boolean_transformer",
                     "control_flow_flattening": "flow_transformer",
-                    "bytecode_obfuscation": "bytecode_transformer",
                     "int_obfuscation": "int_transformer",
                     "junk_code": "junk_transformer"
                 }
-                
+
                 for old_key, new_key in compat_map.items():
                     if old_key in ext_config and new_key not in ext_config:
                         ext_config[new_key] = ext_config.pop(old_key)
-
-                if "final_wrap" in ext_config:
-                    fw = ext_config.pop("final_wrap")
-                    enabled = fw.get("enabled", True) if isinstance(fw, dict) else bool(fw)
-                    if "bytecode_transformer" not in ext_config:
-                        ext_config["bytecode_transformer"] = {}
-                    if isinstance(ext_config["bytecode_transformer"], dict):
-                        ext_config["bytecode_transformer"]["wrap"] = enabled
 
                 for key, value in ext_config.items():
                     if key in config and isinstance(config[key], dict) and isinstance(value, dict):
@@ -918,8 +907,10 @@ def load_config():
                         config[key]["enabled"] = value
                     else:
                         config[key] = value
-        except: pass
+        except:
+            pass
     return config
+
 
 def process_obfuscation(filename):
     if not filename.endswith(".py"):
@@ -950,7 +941,8 @@ def process_obfuscation(filename):
 
     with alive_bar(100, title=f'Protecting {filename}', bar='smooth', spinner='dots_waves') as bar:
         for _ in range(5): time.sleep(0.01); bar()
-        with open(filename, "r", encoding="utf-8") as f: source = f.read()
+        with open(filename, "r", encoding="utf-8") as f:
+            source = f.read()
 
         use_ast = False
         if config.get("rename_transformer", {}).get("enabled"): use_ast = True
@@ -960,62 +952,42 @@ def process_obfuscation(filename):
         output_code = ""
 
         if use_ast:
-             for _ in range(10): time.sleep(0.01); bar()
-             tree = ast.parse(source)
+            for _ in range(10): time.sleep(0.01); bar()
+            tree = ast.parse(source)
 
-             for _ in range(20): time.sleep(0.01); bar()
-             builder = SymbolTableBuilder(config, exclusions, stats)
-             builder.visit(tree)
+            for _ in range(20): time.sleep(0.01); bar()
+            import_fixer = ImportTransformer()
+            tree = import_fixer.visit(tree)
 
-             for _ in range(30): time.sleep(0.01); bar()
-             obfuscator = ProfessionalObfuscator(config, builder, stats)
-             tree = obfuscator.visit(tree)
-             ast.fix_missing_locations(tree)
+            builder = SymbolTableBuilder(config, exclusions, stats)
+            builder.visit(tree)
 
-             if obfuscator.wrappers_needed:
+            for _ in range(30): time.sleep(0.01); bar()
+            obfuscator = ProfessionalObfuscator(config, builder, stats)
+            tree = obfuscator.visit(tree)
+            ast.fix_missing_locations(tree)
+
+            if obfuscator.wrappers_needed:
                 wrapper_tree = ast.parse(FFI_WRAPPER_SOURCE)
                 tree.body = wrapper_tree.body + tree.body
 
-             if config.get("antivm_transformer", {}).get("enabled", True):
+            if config.get("antivm_transformer", {}).get("enabled", True):
                 antivm_tree = ast.parse(ANTI_VM_SOURCE)
                 tree.body = antivm_tree.body + tree.body
 
-             for _ in range(20): time.sleep(0.01); bar()
-             output_code = ast.unparse(tree)
-
-             if config.get("bytecode_transformer", {}).get("enabled", False):
-                 output_code = apply_bytecode_obfuscation(output_code, config, stats)
+            for _ in range(20): time.sleep(0.01); bar()
+            output_code = ast.unparse(tree)
 
         else:
-             for _ in range(60): time.sleep(0.01); bar()
-             output_code = source
-             if config.get("antivm_transformer", {}).get("enabled", True):
-                 output_code = ANTI_VM_SOURCE + "\n" + output_code
-
-        bc_conf = config.get("bytecode_transformer", {})
-        if bc_conf.get("wrap", False):
-            final_code_obj = compile(output_code, "<pyfuzor_elite>", "exec")
-            raw_bc = marshal.dumps(final_code_obj)
-            k = secrets.randbelow(254) + 1
-            enc_bc, shuffle_bc = _encrypt_bytecode_v2(raw_bc, k)
-
-            elite_wrapper = f"""import marshal, types, base64
-def _e():
-    enc = {repr(enc_bc)}
-    k = {k}
-    s = {repr(shuffle_bc)}
-    b = base64.b64decode(enc)
-    raw = bytes([((x ^ k) - 13) % 256 for x in b])
-    sh = bytearray(len(raw))
-    for i, idx in enumerate(s): sh[idx] = raw[i]
-    exec(marshal.loads(bytes(sh)), globals())
-if __name__ == "__main__": _e()
-"""
-            output_code = elite_wrapper
+            for _ in range(60): time.sleep(0.01); bar()
+            output_code = source
+            if config.get("antivm_transformer", {}).get("enabled", True):
+                output_code = ANTI_VM_SOURCE + "\n" + output_code
 
         base, _ = os.path.splitext(filename)
         out_name = f"{base}_pro.py"
-        with open(out_name, "w", encoding="utf-8") as f: f.write(output_code)
+        with open(out_name, "w", encoding="utf-8") as f:
+            f.write(output_code)
 
     orig_size = len(source)
     new_size = len(output_code)
@@ -1034,13 +1006,11 @@ if __name__ == "__main__": _e()
     print(f" │  > Bools Obfuscated      : {ANSI_YELLOW}{stats['obfuscated_bools']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
     print(f" │  > Attributes Masked     : {ANSI_YELLOW}{stats['obfuscated_attributes']:8}{ANSI_RESET}{ANSI_CYAN}                            │")
     print(f" │  > Flow Flattened        : {ANSI_YELLOW}{stats['flattened_functions']:8} functions{ANSI_RESET}{ANSI_CYAN}                  │")
-    if config.get("bytecode_transformer", {}).get("enabled"):
-        print(f" │  > Bytecode Encrypted    : {ANSI_YELLOW}{stats.get('bytecode_obfuscated_functions', 0):8} functions{ANSI_RESET}{ANSI_CYAN}                  │")
     print(f" ├─────────────────────────────────────────────────────────────┤")
     print(f" │ {ANSI_BOLD}Protection Status{ANSI_RESET}{ANSI_CYAN}                                           │")
-    print(f" │  > Final Wrapper         : {ANSI_YELLOW}{'Enabled' if config.get('bytecode_transformer', {}).get('wrap', False) else 'Disabled':8}{ANSI_RESET}{ANSI_CYAN}                            │")
     print(f" │  > Anti-Trace            : {ANSI_GREEN}Active  {ANSI_RESET}{ANSI_CYAN}                            │")
     print(f" └─────────────────────────────────────────────────────────────┘{ANSI_RESET}\n")
+
 
 def main_cli():
     clear_screen()
@@ -1064,11 +1034,11 @@ def main_cli():
                 else:
                     process_obfuscation(parts[1])
             elif cmd == "help":
-                 print(f"\n {ANSI_BOLD}{ANSI_CYAN}AVAILABLE COMMANDS:{ANSI_RESET}")
-                 print(f"  {ANSI_YELLOW}obf <file>{ANSI_RESET}   : Obfuscate a python script")
-                 print(f"  {ANSI_YELLOW}help{ANSI_RESET}         : Show this message")
-                 print(f"  {ANSI_YELLOW}clear{ANSI_RESET}        : Clear the screen")
-                 print(f"  {ANSI_YELLOW}exit{ANSI_RESET}         : Quit the program\n")
+                print(f"\n {ANSI_BOLD}{ANSI_CYAN}AVAILABLE COMMANDS:{ANSI_RESET}")
+                print(f"  {ANSI_YELLOW}obf <file>{ANSI_RESET}   : Obfuscate a python script")
+                print(f"  {ANSI_YELLOW}help{ANSI_RESET}         : Show this message")
+                print(f"  {ANSI_YELLOW}clear{ANSI_RESET}        : Clear the screen")
+                print(f"  {ANSI_YELLOW}exit{ANSI_RESET}         : Quit the program\n")
             elif cmd == "clear":
                 clear_screen()
                 print(LOGO)
@@ -1080,6 +1050,7 @@ def main_cli():
             break
         except Exception as e:
             print(f"{ANSI_RED}Error: {e}{ANSI_RESET}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
