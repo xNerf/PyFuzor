@@ -2,29 +2,41 @@
     "ffi_obfuscation": {
         "enabled": true
     },
-    "rename_variables": {
+    "rename_transformer": {
+        "enabled": true,
+        "locals": true,
+        "globals": true,
+        "functions": true,
+        "classes": true
+    },
+    "antivm_transformer": {
         "enabled": true
     },
-    "anti_vm": {
+    "remove_comment_transformer": {
         "enabled": true
     },
-    "remove_comments": true,
-    "string_encryption": {
+    "string_transformer": {
         "enabled": true
     },
     "attribute_obfuscation": {
         "enabled": true
     },
-    "boolean_obfuscation": {
+    "boolean_transformer": {
         "enabled": true
     },
-    "control_flow_flattening": {
+    "flow_transformer": {
         "enabled": true
     },
-    "bytecode_obfuscation": {
+    "bytecode_transformer": {
+        "enabled": true,
+        "wrap": false,
+        "min_statements": 2,
+        "ignore_functions": []
+    },
+    "int_transformer": {
         "enabled": true
     },
-    "junk_code": {
+    "junk_transformer": {
         "enabled": true,
         "intensity": 20
     }

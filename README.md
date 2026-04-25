@@ -1,131 +1,117 @@
-# PyFuzor v2.2
+# 🛡️ Advanced Python Obfuscator (PRO)
 
-Professional AST-level Python obfuscator. Hardens code against reverse engineering using structural transformations. Not a simple variable renamer.
-
-## Transformers
-- **Bytecode Shuffling (NEW)**: Compiles functions and the entire module into encrypted, shuffled bytecode blobs.
-- **Zlib-String Layer (NEW)**: Multi-layer string encryption with XOR, Bit-Shift, and Zlib compression.
-- **Elite Exec Wrapper (NEW)**: Final output is wrapped in a bytecode loader, preventing source leaks via `print` hooking.
-- **Control Flow Flattening**: Flattens linear logic into a shuffled state machine dispatcher.
-- **Anti-Trace & Anti-VM**: Detects debuggers, debug environments, and native virtualization.
-- **Global Symbol Sync**: Renames every variable, function, and class while keeping `getattr` and keyword arguments perfectly synced.
+This tool makes your Python scripts impossible to read and reverse-engineer. It "scrambles" your code using professional techniques while keeping it fully functional.
 
 ---
 
-## Usage
-`python3 obfuscator.py obf your_script.py`
+## 📖 Quick Start
+
+1.  **Obfuscate**:
+    ```bash
+    python3 obfuscator.py <file>.py
+    ```
+2.  **Result**: Protected file is saved as `<file>_pro.py`.
 
 ---
 
-## Advanced Configuration
-You can now fine-tune each transformer in `config.json`:
+## ⚙️ Configuration (`config.json`)
 
----
+| Option | What it does |
+| :--- | :--- |
+| `rename_transformer` | Changes variable, function, and class names. |
+| `string_transformer` | Hides all text and strings. |
+| `flow_transformer` | Turns your code into a "state machine" to hide the logic flow. |
+| `bytecode_transformer` | Encrypts functions into raw bytecode. |
+| `junk_transformer` | Adds distracting "fake" code. |
+| `ffi_obfuscation` | Hides how you call Python functions. |
+| `antivm_transformer` | Stops the script if a debugger is detected. |
 
-Example `config.json`:
-```json
-{
-  "ffi_obfuscation": {
-    "enabled": true
-  },
-  "rename_variables": {
-    "enabled": true
-  },
-  "anti_vm": {
-    "enabled": true
-  },
-  "remove_comments": true,
-  "string_encryption": {
-    "enabled": true
-  },
-  "attribute_obfuscation": {
-    "enabled": true
-  },
-  "boolean_obfuscation": {
-    "enabled": true
-  },
-  "control_flow_flattening": {
-    "enabled": true
-  },
-  "bytecode_obfuscation": {
-    "enabled": true
-  },
-  "junk_code": {
-    "enabled": true,
-    "intensity": 20
-  }
-}
+## 📝 Skipping Names (`exclusions.txt`)
+
+If your code breaks because a library (e.g. Flask) can't find a specific name, add that name to `exclusions.txt`.
+```text
+# for example don't rename these:
+Flask
+app
+route
 ```
 
 ---
 
-## Exclusions (`exclusions.txt`)
-Create an `exclusions.txt` file in the project root to skip obfuscation for specific names. Required for external library compatibility (e.g., Flask routes, Requests parameters).
+## 🚀 How it works (examples)
+
+### 1. Rename Transformer
+*   **Before:** `def calculate_sum(a, b): return a + b`
+*   **After:** `def _123(PyFuzor_L_456, PyFuzor_L_789): return PyFuzor_L_456 + PyFuzor_L_789`
+*   **Prefixes:** `PyFuzor_` for globals/classes, `PyFuzor_L_` for local variables.
+
+### 2. String Transformer
+*   **Before:** `print("Secret Key: 1234")`
+*   **After:** `print(PyFuzor_Flow.decrypt("aGVsbG8...", 42))`
+
+### 3. Flow Transformer (Flattening)
+*   **Before:**
+    ```python
+    x = 10
+    print(x)
+    ```
+*   **After:**
+    ```python
+    state = 1
+    while state != 0:
+        if state == 1: x = 10; state = 2
+        if state == 2: print(x); state = 0
+    ```
+
+### 4. Junk Transformer
+*   **Before:**
+    ```python
+    print("Done")
+    ```
+*   **After:**
+    ```python
+    _a1 = 42
+    len("_b2")
+    print("Done")
+    ```
+
+### 5. Bytecode Transformer
+*   **Before:** `def my_func(): print("Hello")`
+*   **After:** `my_func = _pyfzr_load("PyFuzor_EncryptedBytecodeData...", 13, [Indices...])`
 
 ---
 
-## 🧠 How Transformers Work
+## ⚡ Obfuscation Example
 
-### 1. Control Flow Flattening (CFF)
-Flattens linear logic into a state machine dispatcher. The order of code in the file no longer matches the execution order.
+Here is a simple script before and after being processed with **multiple** transformers.
+
+### Orginal Code
 ```python
-_state = 1
-while _state != 0:
-    if _state == 14: print("Step 2"); _state = 0
-    elif _state == 1: print("Step 1"); _state = 14
+def hi(name):
+    msg = "Hi, " + name
+    print(msg)
+
+hi("user")
 ```
 
-### 2. Symbol Sync Renaming
-Renames symbols while keeping keyword argument calls perfectly synced across the module.
+### Obfuscated Code
 ```python
-def Py_8f2(Py_v1, Py_p2): ...
-Py_8f2(Py_v1="127.0.0.1", Py_p2=8080)
+def _82736451(PyFuzor_L_91827364):
+    _state = 1
+    while _state != 0:
+        if _state == 1:
+            PyFuzor_L_11223344 = 42
+            PyFuzor_L_55667788 = PyFuzor_Flow.decrypt("aGVsbG8...", 89) + PyFuzor_L_91827364
+            _state = 2
+        if _state == 2:
+            print(PyFuzor_L_55667788)
+            _state = 0
+
+_82736451(PyFuzor_Flow.decrypt("V0hvcmxk...", 42))
 ```
 
-### 3. Boolean Expansion
-Hides logic gates behind bitwise math.
-```python
-is_admin = (127 & 0) == 0  # True
-is_expired = not (1 == 1)  # False
-```
-
-### 4. Attribute & String Masking
-Strings are restored at runtime via the `PyFuzor_Flow` engine. Attributes use `getattr` to hide their names.
-```python
-msg = PyFuzor_Flow.decrypt('encoded_blob', 156)
-getattr(self, PyFuzor_Flow.decrypt('...', 42))()
-```
-
----
-
-## 🧪 Example Obfuscation
-
-### **Original Code (`test.py`)**
-```python
-import sys
-
-def secret_function(name):
-    secret_key = "Elite-9921"
-    print(f"Accessing vault for {name} with key {secret_key}")
-
-if __name__ == "__main__":
-    secret_function("Admin")
-```
-
-### **Obfuscated Code (`test_pro.py`)**
-```python
-import marshal, types, base64
-def _e():
-    enc = 'xVXkjuLjZuCLiuOP4maIjY9jyM3P+/G36fpx...'
-    k = 246
-    s = [15, 2, 8, 22, 1, 9, 3, 12, ...] # Shuffle map
-    
-    b = base64.b64decode(enc)
-    raw = bytes([((x ^ k) - 13) % 256 for x in b])
-    sh = bytearray(len(raw))
-    for i, idx in enumerate(s): sh[idx] = raw[i]
-    
-    exec(marshal.loads(bytes(sh)), globals())
-
-if __name__ == "__main__": _e()
-```
+**Transformers used in this example:**
+- `rename_transformer`: Changed `hi` to `_82736451` and variables to `PyFuzor_L_...`.
+- `string_transformer`: Encrypted `"Hi, "` and `"user"`.
+- `flow_transformer`: Flattened the function logic into a `while` loop.
+- `junk_transformer`: Added useless variables like `PyFuzor_L_11223344 = 42`.
