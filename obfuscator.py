@@ -310,15 +310,19 @@ class ProfessionalObfuscator(ast.NodeTransformer):
 
     def _get_junk_statement(self):
         name = get_random_name(prefix="_", length=4)
-        choice = secrets.randbelow(3)
+        choice = secrets.randbelow(5)
         if choice == 0:
             return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())],
                               value=ast.Constant(value=secrets.randbelow(100)))
         elif choice == 1:
             return ast.Expr(
                 value=ast.Call(func=ast.Name(id='len', ctx=ast.Load()), args=[ast.Constant(value=name)], keywords=[]))
-        else:
+        elif choice == 2:
             return ast.If(test=ast.Constant(value=False), body=[ast.Pass()], orelse=[])
+        elif choice == 3:
+            return ast.Try(body=[ast.Pass()], handlers=[ast.ExceptHandler(type=ast.Name(id='Exception', ctx=ast.Load()), name=None, body=[ast.Pass()])], orelse=[], finalbody=[])
+        else:
+            return ast.While(test=ast.Constant(value=False), body=[ast.Pass()], orelse=[])
 
     def _insert_junk(self, body):
         conf = self.config.get("junk_transformer", {})
@@ -421,15 +425,30 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 target_state = encode_state(next_id)
 
                 t_k = secrets.randbelow(1000) + 1
+                op_choice = secrets.randbelow(3)
+                if op_choice == 0:
+                    val_expr = ast.BinOp(
+                        left=ast.BinOp(left=ast.Constant(value=target_state + t_k), op=ast.Sub(),
+                                       right=ast.Constant(value=t_k)),
+                        op=ast.BitXor(),
+                        right=ast.Constant(value=0)
+                    )
+                elif op_choice == 1:
+                    val_expr = ast.BinOp(
+                        left=ast.BinOp(left=ast.Constant(value=target_state ^ t_k), op=ast.BitXor(), right=ast.Constant(value=t_k)),
+                        op=ast.BitOr(),
+                        right=ast.Constant(value=0)
+                    )
+                else:
+                    val_expr = ast.BinOp(
+                        left=ast.BinOp(left=ast.Constant(value=target_state * 2), op=ast.FloorDiv(), right=ast.Constant(value=2)),
+                        op=ast.Add(),
+                        right=ast.Constant(value=0)
+                    )
                 block_body.append(
                     ast.Assign(
                         targets=[ast.Name(id=state_var, ctx=ast.Store())],
-                        value=ast.BinOp(
-                            left=ast.BinOp(left=ast.Constant(value=target_state + t_k), op=ast.Sub(),
-                                           right=ast.Constant(value=t_k)),
-                            op=ast.BitXor(),
-                            right=ast.Constant(value=0)
-                        )
+                        value=val_expr
                     )
                 )
             else:
@@ -444,15 +463,37 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         for bid, bbody in blocks:
             encoded_bid = encode_state(bid)
 
-            opaque_test = ast.Compare(
-                left=ast.BinOp(
-                    left=ast.BinOp(left=ast.Constant(value=opaque_seed), op=ast.Mult(), right=ast.Constant(value=2)),
-                    op=ast.Mod(),
-                    right=ast.Constant(value=2)
-                ),
-                ops=[ast.Eq()],
-                comparators=[ast.Constant(value=0)]
-            )
+            opaque_choice = secrets.randbelow(3)
+            if opaque_choice == 0:
+                opaque_test = ast.Compare(
+                    left=ast.BinOp(
+                        left=ast.BinOp(left=ast.Constant(value=opaque_seed), op=ast.Mult(), right=ast.Constant(value=2)),
+                        op=ast.Mod(),
+                        right=ast.Constant(value=2)
+                    ),
+                    ops=[ast.Eq()],
+                    comparators=[ast.Constant(value=0)]
+                )
+            elif opaque_choice == 1:
+                opaque_test = ast.Compare(
+                    left=ast.BinOp(
+                        left=ast.BinOp(left=ast.Constant(value=opaque_seed), op=ast.Mult(), right=ast.Constant(value=3)),
+                        op=ast.Mod(),
+                        right=ast.Constant(value=3)
+                    ),
+                    ops=[ast.Eq()],
+                    comparators=[ast.Constant(value=0)]
+                )
+            else:
+                opaque_test = ast.Compare(
+                    left=ast.BinOp(
+                        left=ast.Constant(value=opaque_seed),
+                        op=ast.Add(),
+                        right=ast.Constant(value=1)
+                    ),
+                    ops=[ast.NotEq()],
+                    comparators=[ast.Constant(value=opaque_seed)]
+                )
 
             test = ast.BoolOp(
                 op=ast.And(),
@@ -588,12 +629,12 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 compressed = raw_data
 
             k = secrets.randbelow(254) + 1
-
             env_key = sum(sys.version[:3].encode()) % 256
 
-            processed = compressed
-            for _ in range(k % 3 + 2):
-                processed = bytes([((b - 13) % 256) ^ k ^ env_key for b in processed])
+            processed = bytearray(len(compressed))
+            for i, b in enumerate(compressed):
+                rolling = (k + (i % max(1, env_key))) % 256
+                processed[i] = ((b ^ rolling) - 7) % 256
 
             n = len(processed)
             indices = list(range(n))
@@ -602,7 +643,12 @@ class ProfessionalObfuscator(ast.NodeTransformer):
             for i, idx in enumerate(indices):
                 shuffled[i] = processed[idx]
 
-            encoded = base64.b64encode(bytes([((b + 13) % 256) ^ k for b in shuffled])).decode()
+            final_bytes = bytearray(n)
+            for i, b in enumerate(shuffled):
+                r2 = (env_key + (i % k)) % 256
+                final_bytes[i] = ((b + 13) % 256) ^ r2
+
+            encoded = base64.b64encode(final_bytes).decode()
 
             self.wrappers_needed = True
             method = 'decrypt' if isinstance(node.value, str) else 'decrypt_b'
@@ -618,11 +664,19 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 return node
             if -1000 < node.value < 1000:
                 self.stats["obfuscated_ints"] = self.stats.get("obfuscated_ints", 0) + 1
-                op_type = secrets.choice(['add', 'xor'])
+                op_type = secrets.choice(['add', 'sub', 'xor', 'mult'])
                 if op_type == 'add':
                     offset = secrets.randbelow(100) + 1
                     return ast.BinOp(left=ast.Constant(value=node.value - offset), op=ast.Add(),
                                      right=ast.Constant(value=offset))
+                elif op_type == 'sub':
+                    offset = secrets.randbelow(100) + 1
+                    return ast.BinOp(left=ast.Constant(value=node.value + offset), op=ast.Sub(),
+                                     right=ast.Constant(value=offset))
+                elif op_type == 'mult':
+                    multiplier = secrets.choice([2, 3, 4, 5])
+                    return ast.BinOp(left=ast.Constant(value=node.value * multiplier), op=ast.FloorDiv(),
+                                     right=ast.Constant(value=multiplier))
                 else:
                     k = secrets.randbelow(254) + 1
                     return ast.BinOp(left=ast.Constant(value=node.value ^ k), op=ast.BitXor(),
@@ -632,7 +686,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 return node
 
             val = node.value
-            choice = secrets.randbelow(4)
+            choice = secrets.randbelow(5)
             self.stats["obfuscated_bools"] = self.stats.get("obfuscated_bools", 0) + 1
             if val:
                 if choice == 0:
@@ -645,6 +699,8 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 elif choice == 2:
                     return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Lt()],
                                        comparators=[ast.Constant(value=200)])
+                elif choice == 3:
+                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(10)), op=ast.Mult(), right=ast.Constant(value=0)), ops=[ast.Eq()], comparators=[ast.Constant(value=0)])
                 else:
                     return ast.UnaryOp(op=ast.Not(), operand=ast.UnaryOp(op=ast.Not(), operand=ast.Constant(
                         value=secrets.choice([1, 2, 3]))))
@@ -658,6 +714,8 @@ class ProfessionalObfuscator(ast.NodeTransformer):
                 elif choice == 2:
                     return ast.Compare(left=ast.Constant(value=secrets.randbelow(100)), ops=[ast.Gt()],
                                        comparators=[ast.Constant(value=200)])
+                elif choice == 3:
+                    return ast.Compare(left=ast.BinOp(left=ast.Constant(value=secrets.randbelow(10)+1), op=ast.Mult(), right=ast.Constant(value=1)), ops=[ast.Eq()], comparators=[ast.Constant(value=0)])
                 else:
                     return ast.UnaryOp(op=ast.Not(), operand=ast.Constant(value=secrets.choice([1, 2, 3])))
         return node
@@ -905,14 +963,20 @@ class _PyFuzorFlow:
         try:
             ek = sum(sys.version[:3].encode()) % 256
             b = base64.b64decode(d)
-            raw = bytes([((x ^ k) - 13) % 256 for x in b])
-            sh = bytearray(len(raw))
-            for i, idx in enumerate(s): sh[idx] = raw[i]
-            res = bytes(sh)
-            for _ in range(k % 3 + 2):
-                res = bytes([((x ^ k ^ ek) + 13) % 256 for x in res])
-            try: return zlib.decompress(res).decode('utf-8', 'ignore')
-            except: return res.decode('utf-8', 'ignore')
+            sh = bytearray(len(b))
+            for i, x in enumerate(b):
+                r2 = (ek + (i % k)) % 256
+                sh[i] = ((x ^ r2) - 13) % 256
+            processed = bytearray(len(sh))
+            for i, idx in enumerate(s):
+                processed[idx] = sh[i]
+            res = bytearray(len(processed))
+            for i, x in enumerate(processed):
+                rolling = (k + (i % max(1, ek))) % 256
+                res[i] = ((x + 7) % 256) ^ rolling
+            res_bytes = bytes(res)
+            try: return zlib.decompress(res_bytes).decode('utf-8', 'ignore')
+            except: return res_bytes.decode('utf-8', 'ignore')
         except: return ""
 
     def decrypt_b(self, d, k, s):
@@ -920,14 +984,20 @@ class _PyFuzorFlow:
         try:
             ek = sum(sys.version[:3].encode()) % 256
             b = base64.b64decode(d)
-            raw = bytes([((x ^ k) - 13) % 256 for x in b])
-            sh = bytearray(len(raw))
-            for i, idx in enumerate(s): sh[idx] = raw[i]
-            res = bytes(sh)
-            for _ in range(k % 3 + 2):
-                res = bytes([((x ^ k ^ ek) + 13) % 256 for x in res])
-            try: return zlib.decompress(res)
-            except: return res
+            sh = bytearray(len(b))
+            for i, x in enumerate(b):
+                r2 = (ek + (i % k)) % 256
+                sh[i] = ((x ^ r2) - 13) % 256
+            processed = bytearray(len(sh))
+            for i, idx in enumerate(s):
+                processed[idx] = sh[i]
+            res = bytearray(len(processed))
+            for i, x in enumerate(processed):
+                rolling = (k + (i % max(1, ek))) % 256
+                res[i] = ((x + 7) % 256) ^ rolling
+            res_bytes = bytes(res)
+            try: return zlib.decompress(res_bytes)
+            except: return res_bytes
         except: return b""
 
     def call(self, f, *a, **kw):
