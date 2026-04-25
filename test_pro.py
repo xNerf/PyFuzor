@@ -1,3 +1,20 @@
+
+import marshal as _msh
+import types as _typ
+import base64 as _b64
+
+def _pyfzr_load(enc, k, s):
+    b = _b64.b64decode(enc)
+    raw = bytes([((x ^ k) - 13) % 256 for x in b])
+    shuffled = bytearray(len(raw))
+    for i, idx in enumerate(s):
+        shuffled[idx] = raw[i]
+    code = _msh.loads(bytes(shuffled))
+    return _typ.FunctionType(code, globals())
+
+def _pyfzr_method(enc, k, s):
+    fn = _pyfzr_load(enc, k, s)
+    return fn
 def _pyfuzor_init_security():
     try:
         import cppyy
@@ -39,119 +56,121 @@ class _PyFuzorFlow:
         except:
             return b''
 PyFuzor_Flow = _PyFuzorFlow()
+len('PyFuzor_4549')
 import base64
+len('PyFuzor_4323')
 import os
 import sys
 import time
-PyFuzor_rD8mTMQc5a = PyFuzor_Flow.decrypt('Z1hqZ15qWFppWGdeXFlaXkxJSg==', 14)
+PyFuzor_9914347731 = PyFuzor_Flow.decrypt('Dh0TDhcTHSMUHQ4XISQjF3F0cw==', 85)
 
-def PyFuzor_APRCNxgW(PyFuzor_xD1Lm65m):
+def PyFuzor_76149537(PyFuzor_64651992):
 
-    def PyFuzor_WBkxbEm3(*PyFuzor_xd7VnK0c, **PyFuzor_2Z7O0OW3):
-        len('PyFuzor_aRjd')
-        PyFuzor_q9vn = 160 ^ 161
-        while PyFuzor_q9vn != 48 ^ 48:
-            if PyFuzor_Flow.ifchk(PyFuzor_q9vn == -45 + 48):
-                PyFuzor_OBIQnzjtmn = getattr(time, PyFuzor_Flow.decrypt('RC9CLiUxNT82QC9C', 71))()
-                PyFuzor_q9vn = 255 ^ 251
-            elif PyFuzor_Flow.ifchk(PyFuzor_q9vn == 23 ^ 22):
-                PyFuzor_t7a9w8Vh0L = getattr(time, PyFuzor_Flow.decrypt('bFdqVn1ZTWdOaFdq', 47))()
-                PyFuzor_q9vn = -57 + 59
-            elif PyFuzor_Flow.ifchk(PyFuzor_q9vn == -35 + 40):
-                return PyFuzor_bS09retpge
-                PyFuzor_q9vn = 9 ^ 9
-            elif PyFuzor_Flow.ifchk(PyFuzor_q9vn == 7 ^ 3):
-                print(PyFuzor_Flow.decrypt('GSAfIg8dF4Q=', 87) + str(PyFuzor_xD1Lm65m.__name__) + PyFuzor_Flow.decrypt('3KiNjZHc', 239) + format(PyFuzor_OBIQnzjtmn - PyFuzor_t7a9w8Vh0L, PyFuzor_Flow.decrypt('FR9N', 38)) + PyFuzor_Flow.decrypt('dQ==', 27))
-                PyFuzor_q9vn = 173 ^ 168
-            elif PyFuzor_Flow.ifchk(PyFuzor_q9vn == -79 + 81):
-                PyFuzor_bS09retpge = PyFuzor_xD1Lm65m(*PyFuzor_xd7VnK0c, **PyFuzor_2Z7O0OW3)
-                PyFuzor_q9vn = 234 ^ 233
-    if False:
-        pass
-    return PyFuzor_WBkxbEm3
+    def PyFuzor_78793945(*PyFuzor_18493811, **PyFuzor_46526341):
+        PyFuzor_4543 = 165 ^ 164
+        if False:
+            pass
+        while PyFuzor_4543 != -74 + 74:
+            if PyFuzor_Flow.ifchk(PyFuzor_4543 == -47 + 49):
+                PyFuzor_2418615667 = PyFuzor_64651992(*PyFuzor_18493811, **PyFuzor_46526341)
+                PyFuzor_4543 = -63 + 66
+            elif PyFuzor_Flow.ifchk(PyFuzor_4543 == 63 ^ 60):
+                PyFuzor_7857597177 = getattr(time, PyFuzor_Flow.decrypt('nZKfk8yQnKKboZKf', 224))()
+                PyFuzor_4543 = -68 + 72
+            elif PyFuzor_Flow.ifchk(PyFuzor_4543 == 206 ^ 202):
+                print(PyFuzor_Flow.decrypt('d4KBgHGDeR4=', 49) + str(PyFuzor_64651992.__name__) + PyFuzor_Flow.decrypt('VSkUFBBV', 104) + format(PyFuzor_7857597177 - PyFuzor_1585594959, PyFuzor_Flow.decrypt('d30v', 68)) + PyFuzor_Flow.decrypt('nA==', 252))
+                PyFuzor_4543 = 59 ^ 62
+            elif PyFuzor_Flow.ifchk(PyFuzor_4543 == -24 + 29):
+                return PyFuzor_2418615667
+                PyFuzor_4543 = -88 + 88
+            elif PyFuzor_Flow.ifchk(PyFuzor_4543 == 85 ^ 84):
+                PyFuzor_1585594959 = getattr(time, PyFuzor_Flow.decrypt('GSYbJzAsIBYfFSYb', 124))()
+                PyFuzor_4543 = 234 ^ 232
+    return PyFuzor_78793945
 
-class PyFuzor_hDldSQ2r:
-    if False:
-        pass
+class PyFuzor_77789484:
 
-    def __init__(PyFuzor_mmn7trP3, PyFuzor_VLm3REhO, PyFuzor_ic0ZoLC0=-26 + 92):
-        PyFuzor_CwzD = 208 ^ 209
-        while PyFuzor_CwzD != 39 ^ 39:
-            if PyFuzor_Flow.ifchk(PyFuzor_CwzD == 89 ^ 91):
-                PyFuzor_mmn7trP3.PyFuzor_ic0ZoLC0 = PyFuzor_ic0ZoLC0
-                PyFuzor_CwzD = 219 ^ 216
-            elif PyFuzor_Flow.ifchk(PyFuzor_CwzD == -32 + 36):
-                print(PyFuzor_Flow.decrypt('SxYqESlVDhMOKQ4WEQ4fGhlVGxQnX1U=', 104) + str(getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('to3MmZCjmLO8wqHXuMmeww==', 249))))
-                PyFuzor_CwzD = -93 + 93
-            elif PyFuzor_Flow.ifchk(PyFuzor_CwzD == -42 + 45):
-                PyFuzor_mmn7trP3._data = {}
-                PyFuzor_CwzD = 90 ^ 94
-            elif PyFuzor_Flow.ifchk(PyFuzor_CwzD == 182 ^ 183):
-                PyFuzor_mmn7trP3.PyFuzor_VLm3REhO = PyFuzor_VLm3REhO
-                PyFuzor_CwzD = 143 ^ 141
+    def __init__(PyFuzor_14233114, PyFuzor_28439736, PyFuzor_54588274=232 ^ 170):
+        PyFuzor_8352 = 22 ^ 23
+        while PyFuzor_8352 != -29 + 29:
+            if PyFuzor_Flow.ifchk(PyFuzor_8352 == 223 ^ 221):
+                PyFuzor_14233114.PyFuzor_54588274 = PyFuzor_54588274
+                PyFuzor_8352 = 86 ^ 85
+            elif PyFuzor_Flow.ifchk(PyFuzor_8352 == -53 + 54):
+                PyFuzor_14233114.PyFuzor_28439736 = PyFuzor_28439736
+                PyFuzor_8352 = 255 ^ 253
+            elif PyFuzor_Flow.ifchk(PyFuzor_8352 == -57 + 60):
+                PyFuzor_14233114._data = {}
+                PyFuzor_8352 = 10 ^ 14
+            elif PyFuzor_Flow.ifchk(PyFuzor_8352 == 110 ^ 106):
+                print(PyFuzor_Flow.decrypt('NSwYHxdrJB0kFyQsHyQRKCdrJR4ZUWs=', 126) + str(getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('x6C5rJ2SpcLl3+vm4Orm6Q==', 234))))
+                PyFuzor_8352 = 161 ^ 161
 
-    @PyFuzor_APRCNxgW
-    def PyFuzor_RSukVoH3(PyFuzor_mmn7trP3, PyFuzor_fT3BsGdU, PyFuzor_tNO70bV9):
-        PyFuzor_cmfB = 93
-        PyFuzor_kSqMC6y96k = getattr(PyFuzor_Flow.decrypt('', 2), PyFuzor_Flow.decrypt('wb7EvQ==', 222))([chr(ord(PyFuzor_oybofaFpgi) ^ getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('qL+ay76xxqGvtQiesZSVCA==', 203))) for PyFuzor_oybofaFpgi in PyFuzor_tNO70bV9])
-        len('PyFuzor_qGbZ')
-        getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('Ynt4i3g=', 10))[PyFuzor_fT3BsGdU] = getattr(getattr(base64, PyFuzor_Flow.decrypt('gy8tfoeEiH1+', 20))(getattr(PyFuzor_kSqMC6y96k, PyFuzor_Flow.decrypt('CgMIBAkK', 152))()), PyFuzor_Flow.decrypt('rq2zt66t', 197))()
+    @PyFuzor_76149537
+    def PyFuzor_66773422(PyFuzor_14233114, PyFuzor_91462535, PyFuzor_94465683):
+        PyFuzor_4848377288 = getattr(PyFuzor_Flow.decrypt('', 236), PyFuzor_Flow.decrypt('AAP9BA==', 153))([chr(ord(PyFuzor_5632629951) ^ getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('wqmwnayXpMfd3t3q6uTf3g==', 229))) for PyFuzor_5632629951 in PyFuzor_94465683])
+        getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('uJ2ijaI=', 244))[PyFuzor_91462535] = getattr(getattr(base64, PyFuzor_Flow.decrypt('iTU3iH2KfoeI', 30))(getattr(PyFuzor_4848377288, PyFuzor_Flow.decrypt('OC06Ljc4', 78))()), PyFuzor_Flow.decrypt('q6ymoqus', 250))()
 
-    def PyFuzor_FFi1ySaS(PyFuzor_mmn7trP3, PyFuzor_fT3BsGdU):
-        PyFuzor_Od6c = 113 ^ 112
-        while PyFuzor_Od6c != 254 ^ 254:
-            if PyFuzor_Flow.ifchk(PyFuzor_Od6c == 39 ^ 35):
-                PyFuzor_6nc3vQm2Pn = getattr(getattr(base64, PyFuzor_Flow.decrypt('4o6Q4N/h5eDf', 183))(getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('ksvIu8g=', 218))[PyFuzor_fT3BsGdU]), PyFuzor_Flow.decrypt('tLOtubSz', 195))()
-                PyFuzor_Od6c = -94 + 99
-            elif PyFuzor_Flow.ifchk(PyFuzor_Od6c == -71 + 73):
-                PyFuzor_KeRDMp7Qwl = getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('5AvO/wr1AuXe2PfB4s/81Q==', 135))
-                PyFuzor_Od6c = 224 ^ 227
-            elif PyFuzor_Flow.ifchk(PyFuzor_Od6c == 47 ^ 44):
-                print(PyFuzor_Flow.decrypt('qszMxry8wr/ICbfKtr21CcDHCQ==', 220) + str(PyFuzor_KeRDMp7Qwl) + PyFuzor_Flow.decrypt('6enp', 242))
-                PyFuzor_Od6c = 17 ^ 21
-            elif PyFuzor_Flow.ifchk(PyFuzor_Od6c == -93 + 94):
-                if PyFuzor_Flow.ifchk(PyFuzor_fT3BsGdU not in getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('1AkG+QY=', 152))):
-                    raise KeyError(PyFuzor_Flow.decrypt('1/EFrrM=', 129) + str(PyFuzor_fT3BsGdU) + PyFuzor_Flow.decrypt('JitdXlcrZV5YXWcrZF0rVWxYX1cd', 62))
-                PyFuzor_Od6c = -6 + 8
-            elif PyFuzor_Flow.ifchk(PyFuzor_Od6c == -35 + 40):
-                return getattr(PyFuzor_Flow.decrypt('', 193), PyFuzor_Flow.decrypt('PUJAQQ==', 90))([chr(ord(PyFuzor_8ViGQxKSQo) ^ getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('6gHYBQTvDN/x+8rk787byg==', 141))) for PyFuzor_8ViGQxKSQo in PyFuzor_6nc3vQm2Pn])
-                PyFuzor_Od6c = -11 + 11
+    def PyFuzor_41624193(PyFuzor_14233114, PyFuzor_91462535):
+        PyFuzor_7579 = -7 + 8
+        while PyFuzor_7579 != -38 + 38:
+            if PyFuzor_Flow.ifchk(PyFuzor_7579 == 201 ^ 202):
+                print(PyFuzor_Flow.decrypt('dVdXWWdnTVRbFmxVaVJqFlNcFg==', 41) + str(PyFuzor_9563333743) + PyFuzor_Flow.decrypt('YGBg', 125))
+                PyFuzor_7579 = -44 + 48
+            elif PyFuzor_Flow.ifchk(PyFuzor_7579 == 175 ^ 171):
+                PyFuzor_1235614923 = getattr(getattr(base64, PyFuzor_Flow.decrypt('PXFzQ0Q+SkNE', 82))(getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('f1ZZZlk=', 45))[PyFuzor_91462535]), PyFuzor_Flow.decrypt('hYaMgIWG', 28))()
+                PyFuzor_7579 = 162 ^ 167
+            elif PyFuzor_Flow.ifchk(PyFuzor_7579 == 15 ^ 14):
+                if PyFuzor_Flow.ifchk(PyFuzor_91462535 not in getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('pbCzwLM=', 199))):
+                    raise KeyError(PyFuzor_Flow.decrypt('vI6q0dA=', 228) + str(PyFuzor_91462535) + PyFuzor_Flow.decrypt('mZjS0eyY2tHr0tyYz9KY6tfr1OyS', 171))
+                PyFuzor_7579 = 230 ^ 228
+            elif PyFuzor_Flow.ifchk(PyFuzor_7579 == 12 ^ 14):
+                PyFuzor_9563333743 = getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('4QrP/gv4A+jDyb3EysDEvw==', 132))
+                PyFuzor_7579 = 29 ^ 30
+            elif PyFuzor_Flow.ifchk(PyFuzor_7579 == 73 ^ 76):
+                return getattr(PyFuzor_Flow.decrypt('', 186), PyFuzor_Flow.decrypt('WVZcVQ==', 38))([chr(ord(PyFuzor_5244771991) ^ getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('pb6byr+0x6QKCQr9/QcMCQ==', 200))) for PyFuzor_5244771991 in PyFuzor_1235614923])
+                PyFuzor_7579 = -58 + 58
+    len('PyFuzor_6216')
 
-    def __repr__(PyFuzor_mmn7trP3):
-        PyFuzor_38SZ = 39
-        return PyFuzor_Flow.decrypt('iSMuQjlBbTxEOzI/ig==', 64) + str(getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('jGN2Z2JNan2GcE8pindUbQ==', 47))) + PyFuzor_Flow.decrypt('jEM4Rz85bw==', 95) + str(len(getattr(PyFuzor_mmn7trP3, PyFuzor_Flow.decrypt('rqesl6w=', 254)))) + PyFuzor_Flow.decrypt('Ig==', 43)
+    def __repr__(PyFuzor_14233114):
+        return PyFuzor_Flow.decrypt('jffq1t3VqeDY3+bbjg==', 188) + str(getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('/ebz4ufc3wyfpaGgpqSgow==', 160))) + PyFuzor_Flow.decrypt('bCMYJx8ZTw==', 127) + str(len(getattr(PyFuzor_14233114, PyFuzor_Flow.decrypt('PxYZJhk=', 109)))) + PyFuzor_Flow.decrypt('Rg==', 7)
+PyFuzor_3629 = 53
 
-@PyFuzor_APRCNxgW
-def PyFuzor_UUYmAe4D():
-    PyFuzor_65dB = 110 ^ 111
-    while PyFuzor_65dB != 156 ^ 156:
-        if PyFuzor_Flow.ifchk(PyFuzor_65dB == 131 ^ 130):
-            print(PyFuzor_Flow.decrypt('09PT2My7xczYxcy3xszY09PT', 235))
-            PyFuzor_65dB = 224 ^ 226
-        elif PyFuzor_Flow.ifchk(PyFuzor_65dB == -73 + 77):
-            getattr(PyFuzor_dc4yTSbvg5, PyFuzor_Flow.decrypt('VW5rem+Ed1RXWHqAW4RdOA==', 24))(PyFuzor_fT3BsGdU=PyFuzor_Flow.decrypt('oI+ouqakmA==', 242), PyFuzor_tNO70bV9=PyFuzor_rD8mTMQc5a)
-            PyFuzor_65dB = -10 + 15
-        elif PyFuzor_Flow.ifchk(PyFuzor_65dB == -81 + 83):
-            PyFuzor_dc4yTSbvg5 = PyFuzor_hDldSQ2r(PyFuzor_VLm3REhO=PyFuzor_Flow.decrypt('vsSuww==', 196), PyFuzor_ic0ZoLC0=56 ^ 43)
-            PyFuzor_65dB = -17 + 20
-        elif PyFuzor_Flow.ifchk(PyFuzor_65dB == 116 ^ 113):
+@PyFuzor_76149537
+def PyFuzor_92423542():
+    PyFuzor_7418 = 211 ^ 210
+    while PyFuzor_7418 != 67 ^ 67:
+        if PyFuzor_Flow.ifchk(PyFuzor_7418 == -62 + 65):
+            getattr(PyFuzor_7131742947, PyFuzor_Flow.decrypt('LxhBFBUqDTpRUVJSTlNNTQ==', 114))(PyFuzor_91462535=PyFuzor_Flow.decrypt('WlVqVVhVZ1k=', 41), PyFuzor_94465683=PyFuzor_Flow.decrypt('U1JWWFNPUmZrHSwrJiU=', 42))
+            PyFuzor_7418 = 20 ^ 16
+        elif PyFuzor_Flow.ifchk(PyFuzor_7418 == -33 + 37):
+            getattr(PyFuzor_7131742947, PyFuzor_Flow.decrypt('XHNmd3J9ek02NjU1OTg6Og==', 31))(PyFuzor_91462535=PyFuzor_Flow.decrypt('6tni8OTm0g==', 188), PyFuzor_94465683=PyFuzor_9914347731)
+            PyFuzor_7418 = -46 + 51
+        elif PyFuzor_Flow.ifchk(PyFuzor_7418 == -46 + 48):
+            PyFuzor_7131742947 = PyFuzor_77789484(PyFuzor_28439736=PyFuzor_Flow.decrypt('1tzm2w==', 188), PyFuzor_54588274=203 ^ 216)
+            PyFuzor_7418 = -81 + 84
+        elif PyFuzor_Flow.ifchk(PyFuzor_7418 == 121 ^ 124):
             try:
-                PyFuzor_RIOQQ4rnJq = getattr(PyFuzor_dc4yTSbvg5, PyFuzor_Flow.decrypt('fmV0YWhbYIt0dFUdZX9Nfw==', 33))(PyFuzor_Flow.decrypt('j5SflJGUopA=', 230))
-                print(PyFuzor_Flow.decrypt('Tm1zhImCfm1uMk5UTDI=', 5) + str(PyFuzor_RIOQQ4rnJq))
-                PyFuzor_5kcv6BMvoJ = [PyFuzor_p5pcgJ4bZY for PyFuzor_p5pcgJ4bZY in getattr(getattr(PyFuzor_dc4yTSbvg5, PyFuzor_Flow.decrypt('YXx3jHc=', 11)), PyFuzor_Flow.decrypt('4efT2Q==', 191))()]
-                print(PyFuzor_Flow.decrypt('ZotyhXx7N258gIY9Nw==', 10) + str(getattr(PyFuzor_Flow.decrypt('BwM=', 214), PyFuzor_Flow.decrypt('8/Dy7w==', 140))(PyFuzor_5kcv6BMvoJ)))
-                if PyFuzor_Flow.ifchk(getattr(PyFuzor_dc4yTSbvg5, PyFuzor_Flow.decrypt('FDseLzpFMhUeHktzOxFDEQ==', 87))(PyFuzor_Flow.decrypt('XU5le2dhVQ==', 49)) == PyFuzor_rD8mTMQc5a):
-                    print(PyFuzor_Flow.decrypt('iE1RV04cZltQU1hbaFNNTiIciYd5eXeJiQ==', 47))
+                PyFuzor_3213563296 = getattr(PyFuzor_7131742947, PyFuzor_Flow.decrypt('+tEI1dTf3O+WmZiclpmRmw==', 189))(PyFuzor_Flow.decrypt('iIt4i4qLeYc=', 31))
+                print(PyFuzor_Flow.decrypt('HDs1Rj9ITDs8eBwWfng=', 75) + str(PyFuzor_3213563296))
+                PyFuzor_3774195563 = [PyFuzor_1193656142 for PyFuzor_1193656142 in getattr(getattr(PyFuzor_7131742947, PyFuzor_Flow.decrypt('QhsYKxg=', 106)), PyFuzor_Flow.decrypt('nqyQlg==', 250))()]
+                print(PyFuzor_Flow.decrypt('yKmUp5qZ1ZCanqjf1Q==', 232) + str(getattr(PyFuzor_Flow.decrypt('4eU=', 248), PyFuzor_Flow.decrypt('aGtlbA==', 49))(PyFuzor_3774195563)))
+                if PyFuzor_Flow.ifchk(getattr(PyFuzor_7131742947, PyFuzor_Flow.decrypt('WXJndnOAe1A1Ojc7NToyPA==', 28))(PyFuzor_Flow.decrypt('kaKZx5uNqQ==', 229)) == PyFuzor_9914347731):
+                    print(PyFuzor_Flow.decrypt('zQgM/gfB7wIFCv0C7QoIB7vB1M7k5N7U1A==', 148))
                 else:
-                    print(PyFuzor_Flow.decrypt('r6aqoKXjjaSnrJ+kj6ympdnjvcTMx8C/', 246))
+                    print(PyFuzor_Flow.decrypt('h05SWE0bZVxPVFdcZ1ROTSEbdXx0b3h3', 46))
             except Exception as e:
-                print(PyFuzor_Flow.decrypt('OEcuSS44NjFVOkdHNEdfVQ==', 104) + str(e))
-            PyFuzor_65dB = 51 ^ 51
-        elif PyFuzor_Flow.ifchk(PyFuzor_65dB == 181 ^ 182):
-            getattr(PyFuzor_dc4yTSbvg5, PyFuzor_Flow.decrypt('I0wNQEk2QSYhIkA6HTYbgg==', 70))(PyFuzor_fT3BsGdU=PyFuzor_Flow.decrypt('IyATIB0gDiQ=', 114), PyFuzor_tNO70bV9=PyFuzor_Flow.decrypt('nJmNj5yYmZ2k5uPk3d4=', 227))
-            PyFuzor_65dB = -82 + 86
-if PyFuzor_Flow.ifchk(__name__ == PyFuzor_Flow.decrypt('jIxaTlZbjIw=', 32)):
-    if PyFuzor_Flow.ifchk(len(getattr(sys, PyFuzor_Flow.decrypt('MUQvQA==', 69))) > 88 ^ 89):
-        print(PyFuzor_Flow.decrypt('ORgdHSQdJmsWJBcjaywZJhpRaw==', 126) + str(getattr(sys, PyFuzor_Flow.decrypt('eot4hw==', 12))[-75 + 76:]))
-    PyFuzor_UUYmAe4D()
-    print(PyFuzor_Flow.decrypt('IiIiJXmKeHklioOJJSIiIg==', 56))
+                print(PyFuzor_Flow.decrypt('opGsj6yipKcDoJGRppH5Aw==', 214) + str(e))
+            PyFuzor_7418 = -19 + 19
+        elif PyFuzor_Flow.ifchk(PyFuzor_7418 == 67 ^ 66):
+            print(PyFuzor_Flow.decrypt('OTk5LmJRX2IuX2JNYGIuOTk5', 1))
+            PyFuzor_7418 = -74 + 76
+PyFuzor_2762 = 72
+if PyFuzor_Flow.ifchk(__name__ == PyFuzor_Flow.decrypt('m5vJvcXMm5s=', 209)):
+    if PyFuzor_Flow.ifchk(len(getattr(sys, PyFuzor_Flow.decrypt('/fAD9A==', 145))) > -13 + 14):
+        print(PyFuzor_Flow.decrypt('eVhdXWRdZitWZFdjK2xZZloRKw==', 62) + str(getattr(sys, PyFuzor_Flow.decrypt('Xk9kUw==', 48))[143 ^ 142:]))
+    PyFuzor_92423542()
+    print(PyFuzor_Flow.decrypt('SEhIQ09gUk9DYGVfQ0hISA==', 22))
+_PyFuzorFlow.decrypt = _pyfzr_method('UrqnVKW6KaO6MbrGmvZXurmtulDGuqS6urg+usYaupBHCqC60/T5U7qCyLppyJrFqKjpLle6pbowuj64urq6uvWfsbq68v6kurqopbhQpD2sN7m6Ao03uj2pz1C4Kse65rqjyLk2q8VB+cs2rFErulDKug+5xzG6yKU+sLq5uA+mPbq6uLq6zMe4q6c2ga66y9hopGj2XxMy17owubrOx7qnNqu6xv66usmIuqW6p7qhwcfEEt3F6zW62bqsXrq6xbo+umm40bq6mqWlulO6uprC/Oy6PqK4urq6uK66x8Wluhr2uqa6usWs+ZrKeWqmrrq6obqmukEwurkzxLi6prqWuqW6UOm6NMeVxro9Isa6l3K6xtMpxrq6qVChuvbLNbqHetib27qmrqO6ubq6rbm5w7rLurLYusDFlJmourqrulA3uvmjocm62Lq69rq6urq6JDG6urq5urq6eTe6xbquN6a6w1e6UKu6D7mpwM7MxkEpprrHt9i6pLqlqNHrV5owpKUyuqSwujOUuroI+bpQxrqBubqnnhqrxsWiyMe6SqO6p5W6nsS59K4wuro3UDG5urqnuri6uv66AKc9OkoSgaVQlVC6q7rG', 183, [350, 5, 191, 371, 129, 200, 380, 197, 74, 323, 65, 108, 301, 373, 394, 142, 420, 95, 68, 317, 319, 37, 234, 436, 156, 163, 82, 150, 102, 386, 230, 433, 0, 369, 105, 96, 336, 239, 439, 397, 75, 390, 281, 54, 356, 312, 299, 251, 438, 349, 375, 122, 388, 187, 87, 46, 116, 23, 114, 103, 157, 137, 329, 136, 396, 428, 413, 113, 42, 220, 305, 260, 168, 147, 422, 73, 173, 221, 111, 128, 445, 271, 365, 171, 374, 219, 292, 50, 178, 327, 280, 275, 127, 376, 172, 56, 84, 51, 282, 326, 63, 325, 398, 257, 199, 434, 249, 72, 454, 423, 86, 338, 241, 306, 15, 162, 29, 248, 255, 18, 227, 99, 100, 303, 181, 174, 455, 62, 83, 98, 64, 48, 115, 8, 208, 225, 92, 93, 367, 41, 256, 196, 117, 146, 311, 235, 414, 222, 391, 393, 342, 26, 291, 170, 81, 104, 184, 16, 273, 126, 52, 17, 217, 395, 135, 261, 399, 153, 283, 387, 379, 296, 101, 107, 35, 429, 448, 223, 263, 274, 378, 94, 320, 412, 216, 185, 236, 148, 435, 366, 59, 97, 272, 333, 60, 210, 400, 89, 192, 164, 430, 302, 449, 179, 78, 353, 3, 9, 297, 406, 316, 198, 91, 38, 411, 121, 149, 79, 154, 419, 357, 339, 321, 266, 161, 2, 437, 240, 193, 270, 125, 141, 247, 451, 444, 298, 324, 447, 410, 343, 362, 341, 212, 36, 43, 124, 166, 204, 310, 213, 61, 180, 218, 177, 58, 71, 133, 368, 57, 215, 452, 259, 360, 11, 381, 176, 372, 160, 175, 70, 364, 28, 67, 383, 403, 183, 250, 404, 120, 30, 53, 431, 425, 229, 440, 203, 245, 226, 309, 66, 182, 405, 314, 363, 313, 24, 347, 351, 318, 25, 211, 202, 206, 205, 195, 287, 224, 207, 264, 294, 417, 288, 76, 138, 262, 443, 370, 352, 112, 6, 408, 328, 286, 335, 295, 456, 13, 242, 377, 132, 254, 140, 20, 416, 155, 4, 201, 145, 77, 432, 307, 118, 285, 165, 290, 27, 167, 7, 453, 258, 19, 228, 45, 304, 237, 232, 55, 90, 407, 334, 252, 424, 332, 130, 131, 344, 40, 32, 385, 265, 209, 384, 159, 152, 315, 21, 243, 284, 189, 151, 348, 457, 186, 409, 361, 300, 214, 293, 253, 190, 106, 268, 426, 446, 194, 389, 44, 80, 442, 450, 144, 233, 246, 337, 231, 276, 49, 39, 358, 382, 401, 158, 238, 441, 322, 88, 134, 418, 139, 69, 109, 415, 33, 355, 308, 331, 244, 354, 110, 14, 169, 427, 278, 188, 279, 10, 330, 458, 47, 346, 12, 85, 402, 119, 22, 1, 34, 340, 345, 359, 267, 421, 269, 392, 289, 31, 123, 143, 277])
+_PyFuzorFlow.decrypt_b = _pyfzr_method('81OH7PPzkfPzkvPzj/Pc8/P57Ozz8xnI7SB58+u87u/zS4/z0+zz86nx847T8/Pp6uQe4o3w7yFa6+6R8XiD82Lz4vOM0HpbyO2PGY7wd2uAgvPz8yEb84GO77C/Hrzzgmml0s7wtXmY8/54547z8TXzgX/ze/PzwfDu8/PzGfPx83fzin7zfbiM8X8O89zs7vPg8/Og82DzefPtfvPukTiF8Nfnv97sh+Lx8GcW0xmDHvAD8/OPfvPoHcgZYOzzideB8b/z7Xe153R4kb8Ze47z83T48/OUvfPzkPPz3fNT8/B3eo7z8/Ps8PF+vbd58/Po83zu8xfs89Pw8JHz8/Ov80Hn7vPh8/Pz7++PGeLuRvu/W2DT8/OB+Y+My/Pz8fDz5/PtjPPej/Po3+10mAgZtefw8/Pzd/NG8/Nt8Rn+fvPcjvPz847zj/PztVPeGuzvgPMD8/Hk8/PzjfPzY/Pi4YbvkvMIkSPs84x4dHRz4aDx836e8PPT89zZCIzzQ/AYf+7z', 254, [283, 373, 32, 147, 44, 27, 210, 81, 135, 274, 52, 5, 108, 170, 322, 384, 14, 363, 209, 382, 58, 85, 265, 187, 190, 306, 258, 46, 348, 349, 17, 157, 59, 324, 206, 243, 250, 165, 20, 288, 286, 388, 12, 269, 249, 23, 42, 105, 13, 95, 311, 345, 222, 227, 124, 351, 26, 376, 1, 262, 145, 255, 254, 366, 86, 161, 123, 181, 268, 320, 162, 328, 164, 378, 102, 237, 263, 29, 82, 314, 337, 205, 18, 48, 186, 341, 300, 53, 229, 88, 83, 387, 343, 338, 346, 118, 259, 22, 166, 313, 150, 63, 383, 116, 154, 231, 182, 156, 301, 92, 169, 127, 385, 242, 260, 273, 6, 158, 151, 77, 329, 61, 35, 43, 280, 65, 208, 289, 103, 78, 100, 16, 90, 193, 279, 331, 375, 194, 296, 212, 0, 184, 352, 73, 39, 291, 294, 47, 79, 325, 15, 120, 233, 104, 19, 111, 285, 175, 188, 191, 381, 335, 163, 305, 307, 196, 299, 99, 221, 317, 141, 152, 122, 292, 245, 189, 272, 344, 238, 355, 125, 119, 225, 240, 55, 198, 321, 215, 226, 330, 101, 68, 40, 308, 270, 89, 323, 134, 241, 114, 379, 252, 70, 211, 275, 201, 223, 239, 144, 278, 49, 98, 350, 51, 37, 94, 200, 8, 2, 192, 174, 133, 339, 168, 336, 91, 281, 60, 148, 140, 185, 10, 149, 129, 357, 93, 214, 195, 253, 110, 112, 372, 36, 284, 257, 389, 97, 316, 298, 107, 246, 315, 235, 199, 96, 287, 4, 84, 11, 377, 304, 41, 33, 302, 56, 232, 282, 71, 297, 202, 234, 277, 159, 130, 354, 353, 309, 334, 247, 143, 25, 276, 251, 267, 203, 340, 50, 137, 386, 131, 136, 117, 76, 216, 220, 75, 333, 30, 178, 266, 318, 230, 128, 160, 167, 217, 264, 312, 179, 69, 45, 74, 38, 7, 62, 113, 132, 369, 356, 197, 21, 219, 57, 365, 126, 367, 64, 54, 204, 24, 28, 171, 9, 371, 332, 359, 303, 358, 293, 327, 31, 295, 3, 115, 173, 380, 176, 66, 256, 139, 106, 326, 183, 361, 362, 228, 218, 261, 67, 177, 236, 347, 87, 180, 207, 271, 34, 146, 290, 374, 310, 121, 368, 364, 138, 224, 80, 248, 244, 342, 370, 172, 213, 153, 319, 142, 360, 72, 109, 155])
+PyFuzor_77789484.PyFuzor_41624193 = _pyfzr_method('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', 33, [1584, 1715, 438, 1927, 628, 46, 1057, 458, 1749, 944, 454, 372, 1270, 322, 1210, 843, 985, 2379, 1119, 776, 1250, 1214, 250, 1283, 1682, 1440, 2121, 970, 1573, 1623, 95, 258, 1538, 1034, 330, 159, 2190, 2107, 1503, 802, 1991, 819, 471, 404, 2408, 1571, 1380, 1779, 861, 1247, 2405, 1964, 1649, 422, 964, 463, 2085, 888, 2088, 1351, 1725, 1983, 418, 124, 1981, 89, 934, 1395, 1471, 1076, 1284, 757, 734, 588, 2084, 1780, 1743, 769, 296, 1599, 752, 2223, 1551, 186, 2309, 1298, 1696, 443, 2308, 8, 1606, 967, 1204, 1710, 889, 2074, 953, 593, 1231, 1676, 2462, 2293, 1893, 544, 814, 476, 118, 1111, 1634, 1557, 2013, 2279, 807, 620, 1407, 2253, 2218, 447, 251, 1659, 1672, 1252, 1036, 2275, 1738, 1293, 1205, 1593, 1483, 2061, 548, 1429, 868, 1294, 2067, 128, 1430, 302, 1887, 698, 714, 1674, 1667, 877, 648, 34, 650, 76, 1954, 195, 564, 958, 1124, 800, 1291, 1287, 1024, 114, 755, 2129, 1166, 2294, 494, 693, 1025, 583, 1335, 1582, 737, 1639, 291, 2178, 2480, 1698, 2296, 1239, 2096, 571, 27, 400, 2240, 2032, 41, 1441, 1418, 1693, 1502, 190, 183, 472, 679, 1907, 1152, 1379, 406, 2039, 1675, 2424, 225, 1230, 1328, 1443, 312, 2252, 2002, 1963, 2051, 434, 1017, 1032, 691, 1850, 662, 570, 743, 85, 2326, 495, 2079, 969, 1705, 1461, 379, 562, 2342, 2331, 462, 1001, 1137, 558, 795, 818, 1831, 890, 2035, 1155, 57, 1890, 2388, 1734, 1824, 336, 1364, 2237, 1816, 833, 486, 1159, 1216, 2469, 480, 735, 733, 768, 961, 1834, 646, 747, 2008, 1641, 327, 572, 459, 36, 1517, 1130, 1479, 1326, 1086, 1157, 842, 1986, 1736, 1875, 831, 2202, 1615, 2201, 2385, 1864, 1051, 2014, 2033, 380, 1388, 1356, 1493, 2160, 272, 1423, 1640, 1117, 1653, 1691, 2231, 1717, 2457, 116, 653, 885, 1414, 2453, 1399, 704, 592, 1968, 194, 71, 1925, 2094, 2341, 575, 1219, 1845, 273, 1197, 1000, 414, 2077, 975, 1741, 189, 1899, 1684, 1436, 514, 54, 1657, 1118, 1149, 625, 1044, 2329, 1670, 522, 2465, 170, 188, 2199, 1365, 2298, 1106, 1786, 1080, 1306, 1473, 2169, 316, 685, 318, 1686, 886, 246, 1083, 911, 1491, 33, 1334, 645, 1988, 2181, 705, 2319, 2292, 896, 2173, 110, 1901, 2337, 1604, 727, 1533, 1753, 430, 1040, 2422, 120, 349, 919, 1082, 2030, 117, 508, 770, 626, 971, 2087, 578, 2115, 2376, 1394, 1094, 2427, 172, 2377, 2026, 775, 1211, 2133, 2420, 1458, 1614, 2104, 1620, 1871, 2191, 1226, 1882, 1220, 1008, 1115, 1123, 2215, 1921, 1363, 674, 1767, 1361, 1886, 166, 178, 2056, 739, 1242, 1841, 278, 364, 2136, 82, 1165, 1015, 1955, 369, 1153, 171, 62, 1543, 137, 1709, 1745, 1817, 393, 93, 893, 806, 681, 2053, 363, 778, 371, 411, 1957, 1699, 121, 565, 193, 2456, 1093, 211, 134, 1922, 1960, 147, 292, 2431, 205, 1585, 1495, 1018, 1329, 1849, 722, 922, 298, 1792, 1807, 237, 2208, 448, 657, 2436, 2196, 1597, 1022, 2140, 1217, 618, 415, 457, 1766, 1852, 158, 1837, 601, 224, 16, 332, 1481, 72, 902, 2068, 791, 916, 398, 197, 803, 2090, 1381, 1271, 67, 25, 1062, 2324, 2445, 1768, 2306, 931, 655, 2226, 483, 642, 1840, 1714, 534, 1987, 2146, 694, 1402, 661, 2338, 1772, 1188, 1917, 656, 639, 2455, 665, 1425, 1723, 1719, 897, 718, 444, 396, 680, 1358, 1389, 4, 730, 764, 1377, 1085, 420, 793, 519, 5, 2220, 108, 416, 2018, 823, 2081, 2091, 563, 789, 209, 538, 2428, 1788, 1903, 1720, 407, 2297, 1570, 1075, 963, 2050, 1321, 270, 556, 654, 1572, 433, 813, 2224, 2179, 1448, 848, 1460, 240, 2221, 549, 2394, 1305, 1498, 1842, 317, 1370, 287, 1422, 881, 2470, 1881, 559, 1854, 1420, 346, 321, 2421, 527, 1928, 242, 81, 844, 353, 1409, 490, 787, 1931, 265, 260, 2003, 325, 750, 493, 1021, 460, 988, 1023, 504, 2219, 553, 1929, 1737, 339, 1302, 1690, 554, 286, 1518, 42, 1158, 1353, 236, 1078, 1190, 643, 2374, 122, 1663, 1898, 876, 1054, 1574, 2259, 513, 652, 488, 651, 1248, 2247, 1383, 950, 435, 1411, 1470, 956, 1108, 1945, 1282, 1873, 1107, 105, 981, 1042, 1142, 1454, 2005, 360, 26, 2389, 1810, 1512, 613, 1004, 1742, 702, 1692, 1359, 1243, 974, 2441, 1695, 1262, 1560, 1027, 1280, 1477, 2429, 1178, 1761, 1999, 910, 1795, 1838, 605, 772, 1384, 501, 417, 2103, 2070, 2111, 1728, 2301, 1456, 951, 2210, 2284, 2185, 516, 937, 2392, 2365, 836, 1994, 1345, 1492, 903, 102, 155, 248, 2168, 505, 233, 2464, 2086, 1354, 2267, 115, 1236, 244, 86, 1680, 1064, 2327, 860, 1292, 2028, 1974, 1128, 1648, 633, 1820, 1406, 1730, 367, 827, 1099, 1350, 2310, 606, 878, 1490, 1272, 1251, 1175, 792, 391, 924, 607, 208, 1447, 2134, 1263, 2362, 1186, 2019, 1223, 1497, 1184, 2452, 153, 412, 1277, 1104, 199, 1959, 1035, 1550, 715, 52, 2269, 1486, 2155, 410, 585, 2156, 366, 241, 282, 1150, 1403, 2274, 703, 1131, 706, 869, 133, 2123, 3, 866, 254, 820, 2304, 2017, 1139, 1530, 1856, 684, 979, 2373, 2248, 1049, 30, 1006, 156, 630, 641, 904, 2162, 2058, 1828, 1556, 1827, 1472, 1215, 288, 2004, 157, 597, 695, 1702, 1688, 609, 725, 2089, 1077, 2069, 219, 862, 177, 810, 1804, 9, 2108, 1789, 1438, 499, 1879, 638, 478, 1722, 1539, 2204, 1966, 213, 582, 1990, 1462, 891, 65, 1482, 1962, 79, 1611, 99, 1488, 401, 867, 2023, 1643, 957, 2075, 2241, 1948, 798, 2336, 1387, 1072, 1031, 1958, 990, 2093, 906, 539, 1846, 2264, 1616, 948, 615, 164, 2372, 1392, 1020, 1980, 280, 168, 753, 2390, 1400, 323, 1160, 1338, 1304, 1602, 1995, 1303, 541, 1222, 840, 2419, 1266, 1664, 313, 1307, 526, 2045, 2177, 940, 759, 2399, 252, 1655, 1891, 13, 200, 2025, 1464, 47, 2065, 671, 1896, 1126, 1468, 1895, 928, 455, 1729, 500, 751, 1256, 383, 2289, 1919, 355, 2131, 1532, 687, 853, 1318, 914, 1652, 1193, 334, 1180, 2007, 2471, 533, 938, 1245, 596, 112, 175, 1546, 1299, 31, 1801, 898, 805, 1541, 517, 1951, 673, 465, 2047, 1872, 849, 2366, 591, 850, 2468, 20, 610, 1511, 1398, 428, 1811, 140, 748, 2367, 375, 2466, 2417, 1952, 502, 1668, 856, 1989, 546, 1098, 1071, 1028, 37, 1467, 1311, 2052, 766, 111, 192, 1101, 875, 2353, 376, 2064, 1531, 1577, 1809, 97, 368, 604, 1671, 2283, 1642, 1194, 788, 978, 234, 824, 216, 2472, 1143, 2, 1234, 2345, 1450, 1100, 1259, 445, 1258, 2443, 1096, 2200, 560, 87, 204, 917, 2109, 689, 1607, 1913, 1523, 1146, 2024, 475, 261, 1944, 925, 1969, 389, 1977, 2235, 892, 344, 1340, 59, 466, 540, 144, 2403, 436, 1376, 2426, 905, 573, 2350, 555, 1521, 2128, 1474, 249, 1060, 1762, 6, 1821, 210, 542, 2449, 1700, 1465, 28, 2361, 1658, 658, 2170, 179, 23, 143, 2446, 982, 790, 976, 1286, 22, 989, 1033, 1341, 1909, 822, 1267, 1555, 649, 333, 1979, 804, 2010, 392, 2142, 968, 1727, 1505, 847, 855, 999, 1839, 2402, 1122, 300, 1851, 2473, 1065, 2165, 1172, 1798, 1923, 295, 426, 297, 2043, 402, 123, 14, 2288, 882, 2167, 717, 365, 362, 821, 1066, 1608, 90, 2205, 2189, 408, 2152, 1103, 373, 786, 338, 1520, 66, 1791, 614, 1732, 127, 1090, 1185, 1940, 2194, 2375, 857, 1073, 1396, 1404, 1105, 1427, 719, 2234, 580, 2117, 1813, 1167, 145, 1330, 309, 955, 987, 1238, 1600, 828, 1564, 440, 1588, 1681, 1005, 754, 758, 1673, 2044, 1818, 1227, 125, 1666, 1860, 771, 1832, 666, 1496, 532, 38, 2114, 1484, 2076, 621, 1967, 331, 1487, 2102, 2054, 2110, 1232, 2314, 1712, 1255, 253, 1844, 1589, 255, 2339, 1092, 1324, 939, 1758, 700, 342, 1300, 616, 1793, 923, 7, 935, 909, 1041, 2126, 663, 1132, 1685, 2305, 162, 612, 491, 1455, 1444, 271, 2458, 306, 1524, 2078, 1506, 217, 577, 1469, 834, 1594, 835, 1752, 1773, 2363, 1046, 1201, 109, 69, 1192, 409, 83, 1053, 927, 2057, 2048, 1910, 1869, 599, 1056, 1760, 2212, 314, 1507, 1956, 2041, 1647, 2286, 293, 603, 1575, 2265, 595, 337, 2099, 1169, 2412, 863, 949, 1319, 2358, 1739, 2262, 707, 1908, 1147, 1884, 228, 1863, 2031, 1965, 515, 699, 2230, 708, 1276, 1344, 1628, 106, 1716, 531, 1894, 2415, 2439, 2120, 1313, 1141, 2101, 993, 2098, 567, 2459, 2322, 1039, 2137, 446, 73, 669, 1548, 2060, 1561, 163, 926, 181, 2416, 223, 1866, 1412, 348, 2340, 397, 1926, 1183, 1254, 569, 484, 328, 2450, 1154, 1579, 2130, 165, 1439, 2299, 960, 2425, 712, 2037, 2034, 728, 1934, 808, 839, 40, 24, 796, 2321, 1689, 2016, 1349, 2285, 464, 388, 2082, 936, 908, 2263, 1275, 359, 377, 94, 1836, 1567, 884, 590, 1063, 2138, 697, 600, 305, 528, 1569, 899, 1645, 1654, 2302, 874, 1343, 2387, 461, 1068, 284, 2352, 1171, 913, 1265, 88, 2172, 238, 1914, 797, 2066, 512, 1996, 1704, 432, 1708, 830, 2150, 174, 2383, 1916, 107, 1515, 2323, 1405, 2046, 77, 829, 21, 303, 1529, 510, 2195, 608, 966, 1273, 1578, 619, 232, 1941, 2255, 2357, 173, 611, 1466, 2343, 1638, 17, 207, 2176, 2095, 262, 2245, 1408, 672, 351, 1930, 1089, 2432, 319, 354, 182, 1806, 2027, 749, 2475, 921, 227, 1434, 854, 257, 2347, 634, 1432, 738, 503, 1803, 594, 2135, 1609, 1002, 2423, 2290, 1566, 1694, 1904, 1669, 275, 973, 2401, 479, 1134, 1754, 1763, 2369, 731, 267, 1416, 1544, 311, 1375, 587, 2242, 1776, 811, 347, 1679, 817, 276, 1009, 2435, 2311, 1233, 2406, 1393, 1553, 1225, 370, 1125, 1905, 2207, 18, 1790, 1325, 2166, 290, 537, 1333, 812, 2354, 1528, 1897, 496, 206, 598, 998, 1314, 740, 2411, 1312, 2163, 2317, 1368, 136, 152, 943, 1426, 1701, 1362, 1718, 872, 1621, 629, 1346, 1978, 883, 1759, 915, 686, 343, 1943, 552, 387, 1043, 2371, 1421, 1713, 1865, 1637, 2080, 1249, 2209, 1971, 1992, 395, 1835, 1735, 456, 1278, 1920, 229, 1433, 12, 1580, 403, 783, 1133, 1410, 682, 1747, 482, 581, 1181, 326, 1812, 467, 1360, 1417, 1459, 918, 202, 841, 2256, 1003, 91, 1317, 1823, 2351, 1241, 845, 187, 1196, 784, 551, 2197, 374, 1240, 640, 15, 2225, 1547, 602, 10, 2246, 1151, 2149, 1173, 2328, 1288, 2112, 1500, 294, 283, 1014, 1683, 2198, 1993, 1339, 215, 2159, 1678, 1707, 1631, 49, 2335, 1088, 1876, 1756, 2164, 55, 760, 53, 150, 201, 429, 481, 980, 521, 48, 1415, 1281, 1984, 58, 1545, 1494, 1843, 310, 1769, 1501, 405, 2393, 1229, 675, 929, 439, 763, 2281, 1045, 2071, 126, 1805, 690, 437, 2006, 2447, 1424, 1037, 710, 1113, 1431, 1446, 1833, 264, 2287, 1883, 959, 1390, 1342, 329, 617, 1274, 1145, 2236, 1102, 550, 670, 660, 545, 230, 1822, 191, 2171, 1386, 1510, 997, 1121, 1371, 263, 1549, 1724, 2400, 2187, 1030, 1445, 352, 2334, 1877, 2055, 952, 1660, 1079, 381, 1397, 742, 151, 2211, 2183, 1603, 1576, 1535, 2192, 2414, 815, 2106, 736, 879, 1508, 1200, 427, 647, 1059, 341, 2227, 2349, 1442, 2222, 1933, 2249, 2413, 1586, 1587, 676, 547, 1095, 1257, 732, 954, 1946, 1740, 70, 895, 946, 2186, 1784, 1783, 543, 2127, 2273, 2157, 2020, 887, 1061, 419, 361, 101, 203, 1861, 1109, 2303, 1757, 453, 1590, 1011, 335, 1067, 2479, 1924, 119, 1289, 2257, 1697, 256, 858, 709, 1451, 1885, 1261, 945, 1862, 315, 2154, 1568, 2270, 11, 196, 1632, 2182, 2461, 1961, 226, 1290, 865, 1751, 2382, 1644, 167, 977, 2291, 2254, 399, 307, 2250, 1540, 2021, 2015, 1794, 2174, 557, 1208, 816, 468, 2073, 350, 900, 1932, 1052, 1744, 2175, 773, 1610, 44, 386, 1480, 1519, 1366, 68, 235, 825, 1212, 726, 2276, 1198, 1973, 995, 1785, 1237, 1148, 1316, 160, 1815, 2380, 2316, 1706, 2119, 1070, 2105, 1374, 2332, 35, 1308, 473, 713, 1296, 2344, 154, 1091, 2404, 1874, 912, 1522, 880, 1781, 1279, 1357, 2238, 1189, 2395, 131, 991, 130, 2467, 627, 452, 84, 2448, 1268, 838, 1857, 1613, 2180, 2011, 1295, 846, 864, 1504, 1997, 2463, 1162, 1558, 1127, 801, 524, 384, 1136, 2398, 98, 1591, 1711, 1114, 1221, 942, 1829, 1534, 1565, 1825, 56, 304, 2012, 1320, 2356, 2059, 1878, 1026, 644, 1285, 1029, 498, 2381, 1826, 1050, 1527, 1552, 212, 1892, 965, 220, 141, 2433, 324, 2009, 239, 1047, 826, 61, 716, 2360, 2346, 1478, 1787, 442, 720, 1537, 185, 507, 1853, 441, 1084, 1191, 1778, 425, 231, 1352, 2184, 1598, 1859, 218, 746, 1985, 1661, 1097, 781, 1176, 1563, 1336, 492, 1889, 2049, 1592, 996, 907, 2438, 1347, 785, 1629, 1596, 2097, 756, 281, 668, 1870, 1595, 1750, 1559, 2266, 301, 1138, 345, 920, 711, 2113, 1976, 2330, 2124, 2370, 1499, 1880, 2188, 80, 2243, 450, 149, 1748, 2386, 320, 536, 765, 2300, 1452, 1950, 1007, 870, 2092, 32, 1224, 701, 901, 1179, 1372, 1746, 762, 299, 744, 1848, 2410, 1087, 1509, 1665, 832, 1168, 2478, 1796, 1301, 1163, 1765, 2062, 2258, 2396, 1651, 308, 2477, 1797, 1140, 1902, 1244, 2217, 1310, 2213, 2277, 184, 1618, 632, 535, 851, 1355, 745, 2042, 1401, 529, 259, 161, 696, 799, 1888, 1900, 198, 777, 2280, 1170, 358, 1975, 129, 2272, 2040, 589, 474, 1129, 1019, 2315, 530, 1775, 1489, 2206, 1622, 74, 1662, 667, 523, 1202, 1253, 142, 1777, 1164, 2244, 1337, 1437, 176, 994, 677, 2083, 852, 214, 894, 683, 423, 932, 2063, 637, 678, 1385, 992, 636, 1636, 421, 1562, 78, 1144, 1156, 1808, 1309, 1938, 1246, 0, 1322, 506, 688, 138, 2440, 622, 2000, 1367, 2268, 2295, 1174, 2391, 1315, 2442, 2072, 1120, 1016, 1373, 780, 1774, 485, 2029, 2260, 385, 424, 1601, 1435, 1269, 1755, 132, 75, 489, 100, 1055, 1135, 2307, 1800, 2320, 1814, 1010, 2148, 1463, 1911, 721, 1110, 1942, 1799, 2036, 1949, 2451, 43, 2139, 394, 2144, 1764, 390, 357, 1970, 243, 1998, 1228, 1937, 487, 2122, 1260, 2348, 1182, 45, 1953, 1721, 63, 1935, 1187, 2261, 2233, 586, 1516, 984, 2158, 509, 1177, 1476, 1542, 631, 1936, 1327, 1485, 60, 268, 1939, 2313, 873, 972, 2409, 92, 39, 2216, 574, 635, 1858, 1058, 2228, 1581, 1554, 1646, 741, 1912, 104, 1605, 431, 269, 413, 2407, 449, 1332, 274, 2282, 1348, 1947, 451, 1687, 2384, 761, 2147, 497, 2153, 871, 2232, 659, 859, 382, 2151, 2161, 96, 724, 221, 1513, 986, 1972, 809, 2368, 518, 2397, 1081, 2214, 933, 1802, 103, 2460, 51, 1235, 1218, 1074, 2118, 2229, 1475, 2378, 1206, 1013, 1626, 1819, 1419, 1733, 29, 2434, 169, 19, 1619, 1449, 285, 146, 1830, 1617, 1855, 1982, 623, 1369, 148, 289, 962, 1203, 2481, 2437, 1612, 1915, 469, 624, 692, 1771, 1583, 1656, 2038, 930, 1514, 2364, 779, 1526, 1413, 135, 2430, 1770, 2251, 356, 1209, 1726, 1048, 2444, 1677, 1703, 378, 1323, 1782, 1391, 2143, 1650, 774, 1199, 50, 477, 1536, 139, 2203, 2333, 180, 2418, 2454, 1207, 1867, 511, 1918, 1112, 1, 2145, 1847, 947, 568, 1633, 566, 576, 584, 561, 279, 1012, 340, 2116, 1116, 1069, 1525, 579, 1331, 794, 1382, 1635, 1906, 113, 1627, 2271, 525, 664, 2278, 2193, 1428, 2239, 723, 2476, 983, 520, 2359, 1453, 2474, 1264, 1457, 1378, 2125, 782, 1868, 1297, 2312, 2132, 2325, 767, 266, 277, 1625, 247, 1213, 2001, 64, 2022, 470, 245, 837, 1038, 2141, 2355, 1731, 1161, 2100, 2318, 1195, 1630, 729, 1624, 222, 941])

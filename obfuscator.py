@@ -7,10 +7,25 @@ import string
 import builtins
 import time
 import base64
+import marshal
+import types
+import random
 from alive_progress import alive_bar
 
-def get_random_name(prefix="PyFuzor_", length=8, charset=string.ascii_letters + string.digits):
-    return prefix + ''.join(secrets.choice(charset) for _ in range(length))
+def get_random_name(prefix="PyFuzor_", length=8):
+    base_seed = int(time.time_ns()) + os.getpid()
+    sys_rand = random.SystemRandom(base_seed)
+    seed = base_seed
+    for _ in range(sys_rand.randint(100, 1000)):
+        seed ^= sys_rand.getrandbits(256)
+        seed += sys_rand.randint(10**10, 10**15)
+        seed *= sys_rand.randint(2, 9)
+        seed = abs(seed)
+    seed_str = str(seed).replace('0', str(sys_rand.randint(1, 9)))
+    char_list = list(seed_str)
+    sys_rand.shuffle(char_list)
+    res = "".join(char_list)
+    return prefix + res[:length]
 
 class Scope:
     def __init__(self, scope_type, parent=None):
@@ -57,7 +72,8 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self.root_scope = Scope('global')
         self.current_scope = self.root_scope
         self.scope_map = {}
-        self.rename_enabled = config.get("rename_variables", True)
+        _rv = config.get("rename_variables", True)
+        self.rename_enabled = _rv.get("enabled", True) if isinstance(_rv, dict) else bool(_rv)
         self.global_renames = {}
 
     def visit_Module(self, node):
@@ -142,7 +158,8 @@ class SymbolTableBuilder(ast.NodeVisitor):
 class ProfessionalObfuscator(ast.NodeTransformer):
     def __init__(self, config, symbol_builder):
         self.config = config
-        self.rename_enabled = config.get("rename_variables", True)
+        _rv = config.get("rename_variables", True)
+        self.rename_enabled = _rv.get("enabled", True) if isinstance(_rv, dict) else bool(_rv)
         self.current_scope = symbol_builder.root_scope
         self.scope_map = symbol_builder.scope_map
         self.global_renames = symbol_builder.global_renames
@@ -399,8 +416,7 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         return node
 
     def visit_Attribute(self, node):
-        if not self.config.get("attribute_obfuscation", {}).get("enabled", True):
-            return self.generic_visit(node)
+        attr_obf_on = self.config.get("attribute_obfuscation", {}).get("enabled", True)
 
         if node.attr in self.exclusions:
             return self.generic_visit(node)
@@ -408,6 +424,10 @@ class ProfessionalObfuscator(ast.NodeTransformer):
         attr_name = node.attr
         if self.rename_enabled and attr_name in self.global_renames:
             attr_name = self.global_renames[attr_name]
+
+        if not attr_obf_on:
+            node.attr = attr_name
+            return self.generic_visit(node)
 
         if isinstance(node.ctx, ast.Load):
             return ast.Call(
@@ -618,6 +638,138 @@ LOGO = f"""
 {ANSI_CYAN}         --- PYFUZOR OBFUSCATOR V2.0 (PRO) ---
 {ANSI_RESET}"""
 
+BYTECODE_LOADER_HEADER = '''
+import marshal as _msh
+import types as _typ
+import base64 as _b64
+
+def _pyfzr_load(enc, k, s):
+    b = _b64.b64decode(enc)
+    raw = bytes([((x ^ k) - 13) % 256 for x in b])
+    shuffled = bytearray(len(raw))
+    for i, idx in enumerate(s):
+        shuffled[idx] = raw[i]
+    code = _msh.loads(bytes(shuffled))
+    return _typ.FunctionType(code, globals())
+
+def _pyfzr_method(enc, k, s):
+    fn = _pyfzr_load(enc, k, s)
+    return fn
+'''
+
+def _encrypt_bytecode_v2(raw_bytes, key):
+    n = len(raw_bytes)
+    indices = list(range(n))
+    rng = secrets.SystemRandom()
+    rng.shuffle(indices)
+    shuffled = bytearray(n)
+    for i, idx in enumerate(indices):
+        shuffled[i] = raw_bytes[idx]
+    encoded = bytes([((b + 13) % 256) ^ key for b in shuffled])
+    return base64.b64encode(encoded).decode(), indices
+
+def _try_compile_func(node):
+    func_src = ast.unparse(node)
+    mod_code = compile(func_src, "<pyfuzor_bc>", "exec")
+    func_code = None
+    for const in mod_code.co_consts:
+        if isinstance(const, types.CodeType):
+            func_code = const
+            break
+    return func_code
+
+def apply_bytecode_obfuscation(source_code, config):
+    try:
+        tree = ast.parse(source_code)
+    except SyntaxError:
+        return source_code
+
+    skip_names = {
+        "_pyfzr_load", "_pyfzr_method", "_pyfuzor_init_security",
+        "_PyFuzorFlow", "clear_screen", "load_config",
+        "process_obfuscation", "main_cli", "apply_bytecode_obfuscation",
+        "_encrypt_bytecode", "_encrypt_bytecode_v2", "_try_compile_func",
+    }
+
+    new_body = []
+    loader_injected = False
+    method_patches = []
+
+    def _obfuscate_func(node):
+        """Try to encrypt a function. Returns (enc, key, shuffle) or None."""
+        if node.decorator_list or node.name in skip_names or len(node.body) < 2:
+            return None
+        try:
+            func_code = _try_compile_func(node)
+            if func_code is None: return None
+            if func_code.co_freevars or func_code.co_cellvars: return None
+            raw = marshal.dumps(func_code)
+            marshal.loads(raw)
+            key = secrets.randbelow(254) + 1
+            enc, shuffle = _encrypt_bytecode_v2(raw, key)
+            return enc, key, shuffle
+        except Exception:
+            return None
+
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            result = _obfuscate_func(node)
+            if result:
+                enc, key, shuffle = result
+                assign = ast.Assign(
+                    targets=[ast.Name(id=node.name, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Name(id="_pyfzr_load", ctx=ast.Load()),
+                        args=[ast.Constant(value=enc), ast.Constant(value=key),
+                              ast.Constant(value=shuffle)],
+                        keywords=[]
+                    )
+                )
+                ast.fix_missing_locations(assign)
+                new_body.append(assign)
+                loader_injected = True
+            else:
+                new_body.append(node)
+
+        elif isinstance(node, ast.ClassDef):
+            new_body.append(node)
+            for item in node.body:
+                if not isinstance(item, ast.FunctionDef): continue
+                if item.name.startswith('__') and item.name.endswith('__'): continue
+                result = _obfuscate_func(item)
+                if result:
+                    enc, key, shuffle = result
+                    patch = ast.Assign(
+                        targets=[ast.Attribute(
+                            value=ast.Name(id=node.name, ctx=ast.Load()),
+                            attr=item.name,
+                            ctx=ast.Store()
+                        )],
+                        value=ast.Call(
+                            func=ast.Name(id="_pyfzr_method", ctx=ast.Load()),
+                            args=[ast.Constant(value=enc), ast.Constant(value=key),
+                                  ast.Constant(value=shuffle)],
+                            keywords=[]
+                        )
+                    )
+                    ast.fix_missing_locations(patch)
+                    method_patches.append(patch)
+                    loader_injected = True
+
+        else:
+            new_body.append(node)
+
+    new_body.extend(method_patches)
+
+    tree.body = new_body
+    ast.fix_missing_locations(tree)
+    result = ast.unparse(tree)
+
+    if loader_injected:
+        result = BYTECODE_LOADER_HEADER + result
+
+    return result
+
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -631,6 +783,7 @@ def load_config():
         "attribute_obfuscation": {"enabled": True},
         "boolean_obfuscation": {"enabled": True},
         "control_flow_flattening": {"enabled": True},
+        "bytecode_obfuscation": {"enabled": False},
         "junk_code": {"enabled": True}
     }
     if os.path.exists("config.json"):
@@ -691,6 +844,9 @@ def process_obfuscation(filename):
 
              for _ in range(20): time.sleep(0.01); bar()
              output_code = ast.unparse(tree)
+
+             if config.get("bytecode_obfuscation", {}).get("enabled", False):
+                 output_code = apply_bytecode_obfuscation(output_code, config)
 
         else:
              for _ in range(60): time.sleep(0.01); bar()

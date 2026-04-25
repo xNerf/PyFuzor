@@ -23,6 +23,9 @@
     "control_flow_flattening": {
         "enabled": true
     },
+    "bytecode_obfuscation": {
+        "enabled": true
+    },
     "junk_code": {
         "enabled": true,
         "intensity": 20
