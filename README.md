@@ -48,7 +48,8 @@ route
 
 ### 2. String Transformer
 *   **Before:** `print("Secret Key: 1234")`
-*   **After:** `print(PyFuzor_Flow.decrypt("aGVsbG8...", 42))`
+*   **After:** `print(PyFuzor_Flow.decrypt("aGVsbG8...", 42, [5, 2, 0, ...]))`
+*   **Enhanced Protection:** Now uses multi-stage encryption including byte shuffling, iterative XOR/arithmetic transformations, and environment-dependent keys.
 
 ### 3. Flow Transformer (Flattening)
 *   **Before:**
@@ -58,11 +59,14 @@ route
     ```
 *   **After:**
     ```python
-    state = 1
+    state = (1 * 5) ^ 42
     while state != 0:
-        if state == 1: x = 10; state = 2
-        if state == 2: print(x); state = 0
+        if state == (1 * 5) ^ 42 and ((999 * 2) % 2 == 0):
+             x = 10; state = (2 * 5) ^ 42
+        if state == (2 * 5) ^ 42 and True:
+             print(x); state = 0
     ```
+*   **Enhanced Logic:** Features non-linear state mapping and opaque predicates. Includes "fake" execution branches to mislead de-flattening code.
 
 ### 4. Junk Transformer
 *   **Before:**
@@ -102,17 +106,17 @@ hi("user")
 ### Obfuscated Code
 ```python
 def _82736451(PyFuzor_L_91827364):
-    _state = 1
+    _state = (1 * 7) ^ 123
     while _state != 0:
-        if _state == 1:
+        if _state == (1 * 7) ^ 123 and ((555 * 2) % 2 == 0):
             PyFuzor_L_11223344 = 42
-            PyFuzor_L_55667788 = PyFuzor_Flow.decrypt("aGVsbG8...", 89) + PyFuzor_L_91827364
-            _state = 2
-        if _state == 2:
+            PyFuzor_L_55667788 = PyFuzor_Flow.decrypt("aGVsbG8...", 89, [2, 0, 1]) + PyFuzor_L_91827364
+            _state = (2 * 7) ^ 123
+        if _state == (2 * 7) ^ 123:
             print(PyFuzor_L_55667788)
             _state = 0
 
-_82736451(PyFuzor_Flow.decrypt("V0hvcmxk...", 42))
+_82736451(PyFuzor_Flow.decrypt("V0hvcmxk...", 42, [1, 3, 0, 2]))
 ```
 
 **Transformers used in this example:**
