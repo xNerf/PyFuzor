@@ -19,16 +19,45 @@ This tool makes your Python scripts impossible to read and reverse-engineer. It 
 | Transformer             | Description |
 |:------------------------| :--- |
 | `rename_transformer`    | Randomizes variable, function, and class names. |
-| `string_transformer`    | Encrypts all strings using multi-stage XOR and shuffling. |
+| `string_transformer`    | Encrypts strings using **Polymorphic** or **AES-256-CBC** modes. |
 | `int_transformer`       | Scrambles integers into complex math expressions. |
 | `boolean_transformer`   | Replaces `True`/`False` with opaque logical checks. |
 | `flow_transformer`      | Flattens logic into a state-machine `while` loop. |
-| `ffi_obfuscation`       | Hides function calls through a dynamic proxy. |
-| `attribute_obfuscation` | Masks attribute access (e.g., `os.system` -> `getattr`). |
+| `ffi_obfuscation`       | Hides function calls and attributes via a dynamic proxy. |
 | `bytecode_transformer`  | Encrypts functions into raw Python bytecode. |
 | `junk_transformer`      | Injects useless "fake" code to distract analyzers. |
 | `antivm_transformer`    | Detects and blocks debuggers/VMs (Windows only). |
-| `final_wrap`            | Compresses and encrypts the entire script into a single stub. |
+
+---
+
+## 🛡️ Advanced String Protection
+
+You can now choose between two primary encryption modes in `config.json`:
+
+### 1. Polymorphic Mode (default)
+Randomly picks a different encryption algorithm for **every single string** in your code.
+*   **v1 (Layered Security)**: Combines compression, XOR-rolling and index shuffling.
+*   **v2 (Dynamic Logic)**: Uses environment-aware keys derived from the host system.
+*   **v3 (Pattern Breaking)**: No two strings look the same to a scanner.
+
+### 2. AES-256-CBC Mode
+When you need industry-standard symmetric encryption.
+*   **XOR-Split Key Storage**: The AES key is split into multiple parts and reconstructed in memory only.
+*   **Unique Fingerprints**: Uses a per-string random Initialization Vector (IV). Even if you have the same string twice, the encrypted version will look completely different.
+*   **Zero Dependencies**: No external dependencies required on the target machine.
+
+```json
+"string_transformer": {
+    "enabled": true,
+    "mode": "aes",
+    "aes_config": {
+        "key_split_parts": 3,
+        "random_iv": true
+    }
+}
+```
+
+---
 
 ## 📝 Skipping Names (`exclusions.txt`)
 

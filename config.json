@@ -16,7 +16,12 @@
         "enabled": true
     },
     "string_transformer": {
-        "enabled": true
+        "enabled": true,
+        "mode": "polymorphic",
+        "aes_config": {
+            "key_split_parts": 3,
+            "random_iv": true
+        }
     },
     "attribute_obfuscation": {
         "enabled": true
