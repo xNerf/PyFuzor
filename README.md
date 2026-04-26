@@ -46,17 +46,6 @@ When you need industry-standard symmetric encryption.
 *   **Unique Fingerprints**: Uses a per-string random Initialization Vector (IV). Even if you have the same string twice, the encrypted version will look completely different.
 *   **Zero Dependencies**: No external dependencies required on the target machine.
 
-```json
-"string_transformer": {
-    "enabled": true,
-    "mode": "aes",
-    "aes_config": {
-        "key_split_parts": 3,
-        "random_iv": true
-    }
-}
-```
-
 ---
 
 ## 📝 Skipping Names (`exclusions.txt`)
